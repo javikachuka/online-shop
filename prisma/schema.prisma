@@ -1,0 +1,415 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id          String      @id @default(uuid())
+  name        String
+  parentId    String?
+  parent      Category?   @relation("Subcategories", fields: [parentId], references: [id])
+  subcategories Category[] @relation("Subcategories")
+  products    ProductCategory[]
+  isEnabled   Boolean     @default(false)
+  description   String?
+  slug   String
+}
+
+model ProductCategory {
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  category  Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  @@id([productId, categoryId])
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  title       String
+  description String
+  slug        String           @unique
+  tags        String[]         @default([])
+  diffPrice    Boolean            @default(false) // Diferencia de precio entre las variantes del producto
+  ProductImage ProductImage[]
+  variants    ProductVariant[]
+  categories  ProductCategory[]
+  OrderItem   OrderItem[] 
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime?        @updatedAt
+  isEnabled   Boolean          @default(true)    
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  url       String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  price     Float    @default(0)
+  stock     Int      @default(0)
+  sku       String?
+  discountPercent Float @default(0)
+  OrderItem OrderItem[]
+  attributes ProductVariantAttribute[]
+  StockReservation StockReservation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  order     Int   @default(autoincrement())
+}
+
+model Attribute {
+  id    String  @id @default(uuid())
+  name  String
+  values AttributeValue[]
+  variants ProductVariantAttribute[]
+}
+
+model AttributeValue {
+  id          String   @id @default(uuid())
+  value       String   // Ej: "Negro", "Rojo", "S", "M"
+  attribute   Attribute @relation(fields: [attributeId], references: [id])
+  attributeId String
+  variants    ProductVariantAttribute[]
+}
+
+model ProductVariantAttribute {
+  id             String         @id @default(uuid())
+  attribute      Attribute      @relation(fields: [attributeId], references: [id])
+  attributeId    String
+  value          AttributeValue @relation(fields: [valueId], references: [id])
+  valueId        String
+  variant        ProductVariant @relation(fields: [variantId], references: [id])
+  variantId      String
+
+  @@unique([attributeId, variantId])
+}
+
+enum Role {
+  admin
+  user
+}
+
+model User {
+  id            String       @id @default(uuid())
+  firstName     String
+  lastName      String
+  email         String       @unique
+  emailVerified DateTime?
+  password      String
+  role          Role         @default(user)
+  image         String?
+  
+  // Nuevos campos opcionales
+  phone         String?
+  birthDate     DateTime?
+  gender        String?      // 'male', 'female', 'other', 'prefer-not-to-say'
+  acceptedTerms Boolean      @default(false)
+  acceptMarketing Boolean    @default(false)
+  
+  // Metadata
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime?    @updatedAt
+  
+  // Relaciones
+  UserAddress   UserAddress?
+  Order         Order[]
+  OrderSession  OrderSession[]
+  StockReservation StockReservation[]
+}
+
+model Country {
+  id           String         @id
+  name         String
+  enabled      Boolean        @default(false)
+  UserAddress  UserAddress[]
+  OrderAddress OrderAddress[]
+}
+
+model UserAddress {
+  id         String  @id @default(uuid())
+  firstName  String
+  lastName   String
+  address    String
+  address2   String?
+  postalCode String
+  phone      String
+  city       String
+
+  //relationships
+  country   Country @relation(fields: [countryId], references: [id])
+  countryId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+}
+
+//orden de compras
+enum OrderStatus {
+  pending_payment
+  paid
+  cancelled
+  expired
+  delivered
+}
+
+model Order {
+  id                   String       @id @default(uuid())
+  subTotal             Float
+  tax                  Float
+  total                Float
+  discounts            Float        @default(0)
+  deliveryMethod       String       @default("delivery") // 'delivery' | 'pickup'
+  shippingCost         Float        @default(0)      // Costo del envío
+  shippingMethod       String?                       // Método de envío seleccionado
+  freeShipping         Boolean      @default(false)  // Indica si aplica envío gratis
+  paymentMethod        PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  paymentMethodId      String
+  itemsInOrder         Int
+  isPaid               Boolean      @default(false)
+  delivered            DateTime?
+  paidAt               DateTime?
+  
+  // Nuevos campos para el flujo de pago seguro
+  orderStatus          OrderStatus  @default(pending_payment)
+  reservationExpiresAt DateTime?    // NOW() + 15 minutos para reserva de stock
+  mpPaymentId          String?      // ID de pago de MercadoPago para idempotencia
+  mpPreferenceId       String?      // ID de preferencia de MercadoPago
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paymentStatus String?
+
+  //relaciones
+  user         User           @relation(fields: [userId], references: [id])
+  userId       String
+  company      Company        @relation(fields: [companyId], references: [id])
+  companyId    String
+  OrderItem    OrderItem[]
+  OrderAddress OrderAddress?
+
+  transactionId String? @unique //id de la transaccion de pago de un tercero
+  OrderDiscount OrderDiscount[]
+}
+
+model OrderDiscount {
+  id           String     @id @default(uuid())
+  order        Order      @relation(fields: [orderId], references: [id])
+  orderId      String
+  orderItem    OrderItem? @relation(fields: [orderItemId], references: [id])
+  orderItemId  String?
+  type         String     // Ej: 'variant', 'payment', 'coupon', etc
+  amount       Float      // Monto del descuento aplicado
+  percent      Float?     // Porcentaje aplicado, si corresponde
+  description  String?    // Detalle opcional
+
+  createdAt    DateTime   @default(now())
+}
+
+model OrderItem {
+  id                   String         @id @default(uuid())
+  quantity             Int
+  price                Float          // Precio final pagado por unidad (ya con descuentos aplicados)
+  discount             Float          @default(0) // Monto total de descuento aplicado por unidad
+  
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  variantId    String
+  order        Order          @relation(fields: [orderId], references: [id])
+  orderId      String
+  product      Product        @relation(fields: [productId], references: [id])
+  productId    String
+  OrderDiscount OrderDiscount[]
+}
+
+model OrderAddress {
+  id         String  @id @default(uuid())
+  firstName  String
+  lastName   String
+  address    String
+  address2   String?
+  postalCode String
+  city       String
+  phone      String
+
+  //relacion
+  country   Country @relation(fields: [countryId], references: [id])
+  countryId String
+
+  order   Order  @relation(fields: [orderId], references: [id])
+  orderId String @unique
+}
+
+model PaymentMethod {
+  id              String   @id @default(uuid())
+  name            String
+  isEnabled       Boolean  @default(true)
+  discountPercent Float?   // null si no hay descuento
+  description     String?  // info extra para mostrar al usuario
+  type            String?  // ej: "online", "offline"
+  order           Int?     // para ordenar en la UI
+
+  orders          Order[]  // opposite relation field
+  OrderSession    OrderSession[]
+}
+
+model Company {
+  id                String   @id @default(uuid())
+  name              String   // Nombre de la empresa
+  slug              String   @unique // Identificador único para URLs
+  tradeName         String?  // Nombre comercial (si es diferente al legal)
+  
+  // Información legal
+  cuit              String?  // CUIT/CUIL
+  taxId             String?  // ID fiscal genérico para otros países
+  legalAddress      String?  // Domicilio legal
+  businessType      String?  // Tipo de negocio (ej: "SA", "SRL", "Monotributo")
+  
+  // Información de contacto
+  email             String?
+  phone             String?
+  website           String?
+  
+  // Branding
+  logo              String?  // URL del logo
+  primaryColor      String?  // Color primario de la marca
+  secondaryColor    String?  // Color secundario
+  description       String?  // Descripción de la empresa
+  
+  // Datos bancarios para transferencias
+  bankName          String?  // Nombre del banco
+  accountHolder     String?  // Titular de la cuenta
+  cbu               String?  // CBU (Argentina)
+  cvu               String?  // CVU (Argentina)
+  alias             String?  // Alias bancario
+  iban              String?  // IBAN (internacional)
+  swift             String?  // Código SWIFT
+  accountNumber     String?  // Número de cuenta genérico
+  accountType       String?  // Tipo de cuenta (ej: "corriente", "ahorro")
+  
+  // Configuración general
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false) // Para marcar la empresa por defecto
+  currency          String   @default("ARS") // Moneda principal
+  timezone          String   @default("America/Argentina/Buenos_Aires")
+  
+  // Metadata
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Relaciones
+  orders            Order[]  // Órdenes asociadas a esta empresa
+  OrderSession      OrderSession[]
+  
+  @@index([slug])
+  @@index([isDefault])
+}
+
+// Modelo para almacenar sesiones de pedido temporales
+model OrderSession {
+  id              String   @id @default(uuid())
+  sessionToken    String   @unique // Token único para identificar la sesión
+  
+  // Datos del usuario
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  // Datos de la dirección
+  address         Json     // Datos de dirección en formato JSON
+  
+  // Datos del carrito
+  cartItems       Json     // Items del carrito en formato JSON
+  
+  // Totales calculados
+  subTotal        Float
+  tax             Float
+  total           Float
+  discounts       Float    @default(0)
+  
+  // Costos de envío
+  deliveryMethod  String   @default("delivery") // 'delivery' | 'pickup'
+  shippingCost    Float    @default(0)
+  shippingMethod  String   @default("standard") // 'standard', 'express', etc.
+  freeShipping    Boolean  @default(false)
+  
+  // Método de pago
+  paymentMethodId String
+  paymentMethod   PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+  
+  // Empresa
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id])
+  
+  // Metadata
+  isProcessed     Boolean  @default(false) // Si ya se procesó en una orden real
+  expiresAt       DateTime // Fecha de expiración de la sesión
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sessionToken])
+  @@index([userId])
+  @@index([isProcessed])
+  @@index([expiresAt])
+}
+
+// Modelo para reserva temporal de stock
+model StockReservation {
+  id            String   @id @default(uuid())
+  reservationId String   @unique // ID único para identificar la reserva
+  
+  // Producto y cantidad reservada
+  variantId     String
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+  quantity      Int
+  
+  // Usuario que hizo la reserva
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  // Estado de la reserva
+  status        ReservationStatus @default(ACTIVE)
+  
+  // Metadatos de la reserva
+  reason        String?   // Motivo de la reserva (ej: "checkout", "payment")
+  orderKey      String?   // Clave para asociar con orden/pago
+  
+  // Control de tiempo
+  expiresAt     DateTime  // Fecha de expiración automática
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Datos de finalización
+  completedAt   DateTime? // Cuando se completó la reserva
+  releasedAt    DateTime? // Cuando se liberó la reserva
+  
+  @@index([variantId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([orderKey])
+  @@index([reservationId])
+}
+
+enum ReservationStatus {
+  ACTIVE     // Reserva activa
+  COMPLETED  // Reserva completada (producto comprado)
+  RELEASED   // Reserva liberada (expirada o cancelada)
+  EXPIRED    // Reserva expirada automáticamente
+  CANCELLED  // Reserva cancelada 
+}
+
