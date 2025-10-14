@@ -24,13 +24,15 @@ export default async function ProductPage({ params }: Props) {
     if(!product && slug !== 'new') {
         return notFound();
     }
+
+    const categoriesTyped = categories as any[];
     
 
     const title = (slug === 'new') ? 'Nuevo Producto' : 'Editar Producto';
     return (
         <>
             <Title title={`${title}`} />
-            <ProductForm product={product!} categories={categories ?? []} attributes={attributes ?? []} />
+            <ProductForm product={product!} categories={categoriesTyped ?? []} attributes={attributes ?? []} />
         </>
     );
 };
