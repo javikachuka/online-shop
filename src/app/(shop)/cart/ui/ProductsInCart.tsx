@@ -59,7 +59,7 @@ export const ProductsInCart = () => {
         if (productsInCart.length > 0) {
             fetchStock();
         }
-    }, []);
+    }, [productsInCart]);
 
     const handleQuantityChange = async (product : CartProduct, value: number) => {
         

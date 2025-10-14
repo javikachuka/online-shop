@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CartProduct, Product, ProductVariant } from "@/interfaces";
 import { QuantitySelector } from "@/components";
 import { useCartStore } from "@/store";
@@ -14,7 +14,7 @@ interface Props {
 
 
 export const FilterAttributes = ({ product, filters }: Props) => {
-    const variants = product.variants || [];
+    const variants = useMemo(() => product.variants || [], [product.variants]);
     
     // Selecciona la primera opción de cada filtro al montar el componente, solo si la variante resultante tiene stock > 0
     const getDefaultSelectedAttributes = () => {
@@ -82,7 +82,7 @@ export const FilterAttributes = ({ product, filters }: Props) => {
         }
         
         setQuantity(1);
-    }, [selectedAttributes]);
+    }, [selectedAttributes, filters, variants]);
 
     //manejar el cambio de cantidad segun stock
     const handleQuantityChange = async (value: number) => {

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { IoSearchOutline, IoCloseOutline, IoArrowBackOutline } from 'react-icons/io5';
 import { getSearchSuggestions } from '@/actions';
 import { useDebounce } from '@/hooks/useDebounce';
+import Image from 'next/image';
 
 interface SearchSuggestion {
   id: string;
@@ -197,9 +198,11 @@ export const MobileSearchModal = ({ isOpen, onClose }: Props) => {
                       index === selectedIndex ? 'bg-blue-50' : ''
                     }`}
                   >
-                    <img
+                    <Image
                       src={suggestion.image}
                       alt={suggestion.title}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
@@ -220,7 +223,7 @@ export const MobileSearchModal = ({ isOpen, onClose }: Props) => {
                 >
                   <IoSearchOutline className="w-5 h-5" />
                   <span className="font-medium">
-                    Ver todos los resultados para "{query}"
+                    Ver todos los resultados para &quot;{query}&quot;
                   </span>
                 </button>
               </div>
@@ -231,7 +234,7 @@ export const MobileSearchModal = ({ isOpen, onClose }: Props) => {
                   No se encontraron productos
                 </h3>
                 <p className="text-gray-500 text-center mb-4">
-                  No hay productos que coincidan con "{query}"
+                  No hay productos que coincidan con &quot;{query}&quot;
                 </p>
                 <button
                   onClick={() => {

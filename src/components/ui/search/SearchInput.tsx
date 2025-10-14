@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { IoSearchOutline, IoCloseOutline } from 'react-icons/io5';
 import { getSearchSuggestions } from '@/actions';
 import { useDebounce } from '@/hooks/useDebounce';
+import Image from 'next/image';
 
 interface SearchSuggestion {
   id: string;
@@ -171,9 +172,11 @@ export const SearchInput = () => {
                     index === selectedIndex ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <img
+                  <Image
                     src={suggestion.image}
                     alt={suggestion.title}
+                    width={48}
+                    height={48}
                     className="w-10 h-10 object-cover rounded"
                   />
                   <div className="flex-1">
@@ -192,7 +195,7 @@ export const SearchInput = () => {
               >
                 <IoSearchOutline className="w-4 h-4" />
                 <span className="text-sm font-medium">
-                  Ver todos los resultados para "{query}"
+                  Ver todos los resultados para &quot;{query}&quot;
                 </span>
               </Link>
             </>

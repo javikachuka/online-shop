@@ -105,7 +105,7 @@ export const SearchPage = ({ initialResult, initialFilters }: Props) => {
           <div className="mb-4">
             {result.searchInfo.query ? (
               <h1 className="text-2xl font-bold text-gray-900">
-                Resultados para "{result.searchInfo.query}"
+                Resultados para &quot;{result.searchInfo.query}&quot;
               </h1>
             ) : (
               <h1 className="text-2xl font-bold text-gray-900">

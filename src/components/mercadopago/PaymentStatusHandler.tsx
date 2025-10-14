@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface OrderStatusResult {
@@ -25,6 +25,40 @@ export const PaymentStatusHandler = () => {
     const paymentId = searchParams.get('payment_id');
     const status = searchParams.get('status');
     const merchantOrderId = searchParams.get('merchant_order_id');
+
+    const handleOrderStatus = useCallback((order: any) => {
+        switch (order.orderStatus) {
+            case 'paid':
+                // Limpiar datos del checkout
+                sessionStorage.removeItem('current_order_id');
+                sessionStorage.removeItem('order_expires_at');
+                localStorage.removeItem('cart');
+                
+                // Redirigir después de 3 segundos
+                setTimeout(() => {
+                    router.replace(`/orders/${order.id}`);
+                }, 3000);
+                break;
+
+            case 'pending_payment':
+                // Mantener en espera, el webhook puede aún procesar
+                setTimeout(() => {
+                    window.location.reload();
+                }, 10000); // Recargar después de 10 segundos
+                break;
+
+            case 'cancelled':
+            case 'expired':
+                // Limpiar datos y mostrar error
+                sessionStorage.removeItem('current_order_id');
+                sessionStorage.removeItem('order_expires_at');
+                
+                setTimeout(() => {
+                    router.replace('/checkout?error=payment_failed');
+                }, 5000);
+                break;
+        }
+    }, [router]);
 
     useEffect(() => {
         const checkOrderStatus = async () => {
@@ -63,41 +97,7 @@ export const PaymentStatusHandler = () => {
         const timer = setTimeout(checkOrderStatus, 3000);
         
         return () => clearTimeout(timer);
-    }, [paymentId]);
-
-    const handleOrderStatus = (order: any) => {
-        switch (order.orderStatus) {
-            case 'paid':
-                // Limpiar datos del checkout
-                sessionStorage.removeItem('current_order_id');
-                sessionStorage.removeItem('order_expires_at');
-                localStorage.removeItem('cart');
-                
-                // Redirigir después de 3 segundos
-                setTimeout(() => {
-                    router.replace(`/orders/${order.id}`);
-                }, 3000);
-                break;
-
-            case 'pending_payment':
-                // Mantener en espera, el webhook puede aún procesar
-                setTimeout(() => {
-                    window.location.reload();
-                }, 10000); // Recargar después de 10 segundos
-                break;
-
-            case 'cancelled':
-            case 'expired':
-                // Limpiar datos y mostrar error
-                sessionStorage.removeItem('current_order_id');
-                sessionStorage.removeItem('order_expires_at');
-                
-                setTimeout(() => {
-                    router.replace('/checkout?error=payment_failed');
-                }, 5000);
-                break;
-        }
-    };
+    }, [paymentId, handleOrderStatus]);
 
     if (isLoading) {
         return (

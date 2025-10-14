@@ -104,7 +104,7 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
       setOrderStatus('error');
       setError(`Pago no aprobado. Estado recibido: ${status}`);
     }
-  }, [paymentId, status, router]);
+  }, [paymentId, status, router, clearCartStorage]);
 
   if (orderStatus === 'checking') {
     return (

@@ -1,6 +1,7 @@
 import { getOrderByIdAdmin } from "@/actions";
 import { MercadoPagoButton, OrderStatus, PayPalButton, Title } from "@/components";
 import { currencyFormat, getNameAttributes } from "@/utils";
+import { getOrderProductTitles } from "@/utils/order-utils";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -143,16 +144,6 @@ export default async function CategoryPage({ params }: Props) {
                                     />
                                 ) : (
                                 <>
-                                    <MercadoPagoButton 
-                                        text="Pagar"
-                                        orderId={orderData.order!.id}
-                                        amount={orderData.order!.total}
-                                        descriptionMP={descriptionMP}
-                                    />
-                                    {/* <PayPalButton 
-                                        orderId={orderData.order!.id}
-                                        amount={orderData.order!.total}
-                                    /> */}
                                 </>
                                 )
                             }
@@ -162,9 +153,4 @@ export default async function CategoryPage({ params }: Props) {
             </div>
         </div>
     );
-}
-
-// Genera un string con los títulos de los productos de la orden y su cantidad, separados por un salto de línea
-export function getOrderProductTitles(orderItems: any[]): string {
-    return orderItems.map(item => `${item.product.title} x${item.quantity}`).join('\n');
 }

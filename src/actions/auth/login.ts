@@ -21,12 +21,11 @@ export async function authenticate(
     if (error instanceof AuthError) {
         console.log(error);
         
-      switch (error.type) {
-        case 'CredentialsSignin':
-          return error.type;
-        default:
-          return 'Something went wrong.';
+      // Verificar si es un error de credenciales basado en el mensaje
+      if (error.message?.includes('CredentialsSignin')) {
+        return 'CredentialsSignin';
       }
+      return 'Something went wrong.';
     }
     throw error;
   }
