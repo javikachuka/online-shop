@@ -43,7 +43,7 @@ export const ProductSlidesShowMobile = ({ images, title, className }: Props) => 
                         <ProductImageCmp
                             width={600}
                             height={500}
-                            src={`/products/${image.url}`}
+                            src={image.url}
                             alt={title}
                         />
                     </SwiperSlide>
