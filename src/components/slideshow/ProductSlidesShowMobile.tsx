@@ -11,6 +11,8 @@ import "swiper/css/pagination";
 
 import "./ProductSlidesShow.css";
 import { ProductImage } from "@/interfaces";
+import { ProductImage as ProductImageCmp } from "../product/product-image/ProductImage";
+
 
 interface Props {
     images: ProductImage[];
@@ -38,7 +40,7 @@ export const ProductSlidesShowMobile = ({ images, title, className }: Props) => 
             >
                 {images.map((image) => (
                     <SwiperSlide key={image.id}>
-                        <Image
+                        <ProductImageCmp
                             width={600}
                             height={500}
                             src={`/products/${image.url}`}
