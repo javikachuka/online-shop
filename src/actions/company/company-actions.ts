@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { Company, CreateCompanyInput, UpdateCompanyInput } from '@/interfaces';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 
 // Obtener la empresa por defecto o la primera empresa disponible
 export const getDefaultCompany = async (): Promise<Company | null> => {
@@ -143,8 +143,13 @@ export const updateCompany = async (data: UpdateCompanyInput) => {
       data: updateData
     });
 
+    // ✅ Revalidar múltiples rutas específicas y layouts
     revalidatePath('/admin/company');
+    revalidatePath('/', 'layout'); // Específicamente el layout
     revalidatePath('/');
+    revalidatePath('/cart');
+    revalidatePath('/checkout');
+    revalidatePath('/profile');
     
     return {
       ok: true,
@@ -260,6 +265,8 @@ export const setDefaultCompany = async (id: string) => {
 };
 
 export const getCompanyNameLogo = async () => {
+  noStore(); // ← Evita que se cachee esta función
+  
   try {
     const company = await prisma.company.findFirst({
         where: { isDefault: true },
