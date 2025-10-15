@@ -98,6 +98,7 @@ export const createCompany = async (data: CreateCompanyInput) => {
     });
 
     revalidatePath('/admin/company');
+    revalidatePath('/');
     
     return {
       ok: true,
@@ -143,6 +144,7 @@ export const updateCompany = async (data: UpdateCompanyInput) => {
     });
 
     revalidatePath('/admin/company');
+    revalidatePath('/');
     
     return {
       ok: true,
