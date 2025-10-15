@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run prisma:deploy && next build",
+    "build:staging": "npm run prisma:deploy && npm run seed && next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:deploy": "npx prisma migrate deploy && prisma generate",
