@@ -12,8 +12,8 @@ export default async function ShopLayout({
 
   return (
     <main className="min-h-screen">
-        <TopMenu categories={links.data} company={companyInfo.company} />
-        <Sidebar categories={links.data}/>
+        <TopMenu categories={links.data as any} company={companyInfo.company} />
+        <Sidebar categories={links.data as any}/>
         <div className="px-0 md:px-10">
         {children}
         </div>
