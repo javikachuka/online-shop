@@ -39,3 +39,4 @@ export * from './payment/PaymentButtons'
 
 export * from './ui/modal/Modal'
 
+export * from './ui/whatsapp-float/WhatsAppFloat';

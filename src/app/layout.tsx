@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { inter } from "@/config/fonts";
 
 import "./globals.css";
-import { Providers } from "@/components";
+import { Providers, WhatsAppFloat } from "@/components";
 
 
 
@@ -25,6 +25,12 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
+        {/* WhatsApp Float Button - aparece en todas las páginas */}
+        <WhatsAppFloat
+          phoneNumber={process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "1234567890"}
+          message={process.env.NEXT_PUBLIC_WHATSAPP_MESSAGE}
+          position="bottom-right"
+        />
       </body>
     </html>
   );
