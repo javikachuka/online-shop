@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 // Simple in-memory store (se reinicia si reinicias el servidor)
 const rateLimitMap = new Map<string, { count: number; lastRequest: number }>();
 const WINDOW_SIZE = 60 * 1000; // 1 minuto
-const MAX_REQUESTS = 10; // Máximo 10 requests por IP por minuto
+const MAX_REQUESTS = 150; // Máximo 10 requests por IP por minuto
 
 export async function POST(request: Request) {
   // Obtén la IP del usuario

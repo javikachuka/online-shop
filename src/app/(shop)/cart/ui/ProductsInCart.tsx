@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ProductImage, QuantitySelector } from "@/components";
 import { useCartStore } from "@/store";
 import Image from "next/image";
@@ -20,46 +20,73 @@ export const ProductsInCart = () => {
     const [loaded, setLoaded] = useState(false);
     const productsInCart = useCartStore((state) => state.getCart());
     
-    type VariantStock = { id: string | number; stock: number }[];
+    type VariantStock = { id: string | number; stock: number; discountPercent: number | null }[];
     const [variantStock, setVariantStock] = useState<VariantStock>([]);
     const totalItemsInCart = useCartStore(state => state.getTotalItems())
+    
+    // Usar useRef para trackear qué variantes ya han sido actualizadas
+    const updatedVariants = useRef(new Set<string>());
+    
     console.log(productsInCart);
 
     if(totalItemsInCart === 0){
         router.push('/empty')
     }
 
-    
-    
-
     useEffect(() => {
         setLoaded(true);
+    }, []);
+
+    // Separar el fetch de stock en su propio useEffect
+    useEffect(() => {
         const fetchStock = async () => {
+            if (productsInCart.length === 0) return;
+            
             const variantIds = productsInCart.map(p => p.variantId);
-            // Llama a tu action o endpoint
-            const res = await fetch('/api/stock-by-variant', {
-                method: 'POST',
-                body: JSON.stringify({ variantIds }),
-                headers: { 'Content-Type': 'application/json' }
-            });
-            const data = await res.json();
-
-            console.log({data});
             
-            
-            setVariantStock(data); // { [variantId]: stock }
-            // Maneja la respuesta y actualiza el estado según sea necesario
-            data.forEach((variant: { id: string | number; stock: number, discountPercent: number|null  }) => {
-                useCartStore.getState().updateVariantPriceDiscount(variant.id.toString(), variant.discountPercent)
-            })
+            try {
+                const res = await fetch('/api/stock-by-variant', {
+                    method: 'POST',
+                    body: JSON.stringify({ variantIds }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
 
-
+                console.log({data});
+                setVariantStock(data);
+                
+            } catch (error) {
+                console.error('Error fetching stock:', error);
+            }
         };
-        console.log(productsInCart);
-        if (productsInCart.length > 0) {
+
+        // Solo hacer fetch si hay productos y no hemos cargado el stock aún
+        if (loaded && productsInCart.length > 0 && variantStock.length === 0) {
             fetchStock();
         }
-    }, [productsInCart]);
+    }, [loaded, productsInCart.length, variantStock.length]); // Agregamos variantStock.length como dependencia
+
+    // Separar la actualización de precios y descuentos
+    useEffect(() => {
+        if (variantStock.length > 0) {
+            variantStock.forEach((variant: { id: string | number; stock: number, discountPercent: number|null }) => {
+                const variantId = variant.id.toString();
+                
+                // Solo actualizar si no lo hemos hecho antes
+                if (!updatedVariants.current.has(variantId)) {
+                    useCartStore.getState().updateVariantPriceDiscount(variantId, variant.discountPercent);
+                    updatedVariants.current.add(variantId);
+                }
+            });
+        }
+    }, [variantStock]); // Solo depende de variantStock
+
+    // Limpiar el set cuando el carrito cambie completamente
+    useEffect(() => {
+        if (productsInCart.length === 0) {
+            updatedVariants.current.clear();
+        }
+    }, [productsInCart.length]);
 
     const handleQuantityChange = async (product : CartProduct, value: number) => {
         
