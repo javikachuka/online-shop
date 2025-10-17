@@ -272,7 +272,8 @@ export const getCompanyNameLogo = async () => {
         where: { isDefault: true },
         select: {
           name: true,
-          logo: true
+          logo: true,
+          phone: true
         }
       });
 

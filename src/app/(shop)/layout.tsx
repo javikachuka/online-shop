@@ -1,5 +1,5 @@
 import { getCompanyNameLogo, getMenuLinks } from "@/actions";
-import { Footer, Sidebar, TopMenu } from "@/components";
+import { Footer, Sidebar, TopMenu, WhatsAppFloat } from "@/components";
 
 export default async function ShopLayout({
  children
@@ -18,6 +18,12 @@ export default async function ShopLayout({
         {children}
         </div>
         <Footer />
+        {/* WhatsApp Float Button - aparece en todas las páginas */}
+        <WhatsAppFloat
+          phoneNumber={companyInfo.company?.phone || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "1234567890"}
+          message={process.env.NEXT_PUBLIC_WHATSAPP_MESSAGE}
+          position="bottom-right"
+        />
     </main>
   );
 }
