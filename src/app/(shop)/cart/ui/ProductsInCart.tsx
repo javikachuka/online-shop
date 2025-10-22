@@ -26,8 +26,6 @@ export const ProductsInCart = () => {
     
     // Usar useRef para trackear qué variantes ya han sido actualizadas
     const updatedVariants = useRef(new Set<string>());
-    
-    console.log(productsInCart);
 
     if(totalItemsInCart === 0){
         router.push('/empty')
@@ -52,7 +50,6 @@ export const ProductsInCart = () => {
                 });
                 const data = await res.json();
 
-                console.log({data});
                 setVariantStock(data);
                 
             } catch (error) {

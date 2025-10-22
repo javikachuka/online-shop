@@ -24,7 +24,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const category = await getCategoryBySlugPath(slugArray);
   if (!category) notFound();
   
-  console.log(category.slug);
   // Obtiene los productos paginados de la categoría usando el id
   const { products, currentPage, totalPages } = await getProductsByCategoryId({ id: category.id, page });
 

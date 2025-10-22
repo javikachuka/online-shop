@@ -205,7 +205,6 @@ export const ProductForm = ({
 
     // Actualizar valor de atributo en nueva variante
     const handleAttributeValueChange = (attributeId: string, value: string) => {
-        console.log(attributeId);
         
         setNewVariant((prev) => ({
             ...prev,

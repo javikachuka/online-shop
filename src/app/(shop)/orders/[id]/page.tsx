@@ -18,8 +18,6 @@ export default async function CategoryPage({ params }: Props) {
 
     const orderData = await getOrderById(id);
     const companyData = await getDefaultCompany()
-
-    console.log({orderData});
     
     
     if(orderData.ok === false) {

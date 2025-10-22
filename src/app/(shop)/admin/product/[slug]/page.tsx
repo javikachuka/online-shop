@@ -17,8 +17,6 @@ export default async function ProductPage({ params }: Props) {
         getAllEnabledCategories(),
         getAllAtributes()
     ]);
-
-    console.log({attributes});
     
 
     if(!product && slug !== 'new') {

@@ -29,7 +29,6 @@ export const PayPalButton = ({orderId, amount} : Props) => {
 
     const createOrder = async (data: CreateOrderData, actions: CreateOrderActions) => {
 
-        console.log('creando');
         
         const transactionId = await actions.order.create({
             intent: "CAPTURE",
@@ -49,8 +48,6 @@ export const PayPalButton = ({orderId, amount} : Props) => {
             throw new Error(updateOrderResponse.error || "Error al actualizar el ID de transacción del pedido");
         }
         
-        console.log(updateOrderResponse);
-        
         
 
         return transactionId
@@ -68,7 +65,6 @@ export const PayPalButton = ({orderId, amount} : Props) => {
         }
         const onApproveResponse = await paypalCheckPayment(details.id)
 
-        console.log({onApproveResponse});
         
     }
 

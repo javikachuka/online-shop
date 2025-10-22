@@ -31,7 +31,6 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ category, categories
       isEnabled,
     });
     setLoading(false);
-    console.log({result});
     
     if (!result.ok) {
       setError(result.error || "Error al guardar la categoría");

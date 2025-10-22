@@ -22,7 +22,6 @@ export default async function OrdersPage({ searchParams }: Props) {
       redirect("/auth/login");
     }
 
-    console.log(totalPages)
     return (
         <>
             <Title title="Mis pedidos" />
