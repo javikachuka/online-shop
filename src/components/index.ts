@@ -40,3 +40,7 @@ export * from './payment/PaymentButtons'
 export * from './ui/modal/Modal'
 
 export * from './ui/whatsapp-float/WhatsAppFloat';
+
+// Analytics
+export * from './analytics/GoogleAnalytics';
+export * from './analytics/PageViewTracker';
