@@ -1,5 +1,6 @@
 import { getCompanyNameLogo, getMenuLinks } from "@/actions";
-import { Footer, Sidebar, TopMenu, WhatsAppFloat } from "@/components";
+import { Footer, PageViewTracker, Sidebar, TopMenu, WhatsAppFloat } from "@/components";
+import { Suspense } from "react";
 
 export default async function ShopLayout({
  children
@@ -12,10 +13,16 @@ export default async function ShopLayout({
 
   return (
     <main className="min-h-screen">
+        {/* Page View Tracker */}
+        <Suspense fallback={null}>
+          <PageViewTracker />
+        </Suspense>
         <TopMenu categories={links.data as any} company={companyInfo.company} />
         <Sidebar categories={links.data as any}/>
         <div className="px-0 md:px-10">
-        {children}
+          <Suspense fallback={<div>Loading...</div>}> 
+            {children}
+          </Suspense>
         </div>
         <Footer />
         {/* WhatsApp Float Button - aparece en todas las páginas */}

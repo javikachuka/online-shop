@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { inter } from "@/config/fonts";
 
 import "./globals.css";
-import { Providers, GoogleAnalytics, PageViewTracker } from "@/components";
+import { Providers, GoogleAnalytics } from "@/components";
 
 
 
@@ -28,8 +28,6 @@ export default function RootLayout({
         />
         
         <Providers>
-          {/* Page View Tracker */}
-          <PageViewTracker />
           {children}
         </Providers>
       </body>
