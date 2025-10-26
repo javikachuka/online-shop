@@ -2,7 +2,7 @@ import NextAuth from 'next-auth';
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
-import prisma from './lib/prisma';
+import { prisma } from './lib/prisma'; // Usar la instancia singleton
 import bcryptjs from 'bcryptjs';
  
 export const authConfig = {
@@ -12,16 +12,13 @@ export const authConfig = {
   },
   callbacks: {
     authorized({auth, request: {nextUrl}}) {
-      
       return true
     },
     jwt({token, user}){
       if(user){
         token.data = user
       }
-      
       return token
-
     },
     session({session, token, user}){
       session.user = token.data as any
@@ -39,21 +36,26 @@ export const authConfig = {
 
             const {email, password} = parsedCredentials.data
             
-            //buscar correo y comp contras
-            const user = await prisma.user.findUnique({where: {email: email.toLowerCase()}})
+            try {
+                // ✅ MEJORADO: Usar la instancia singleton y manejo de errores
+                const user = await prisma.user.findUnique({
+                    where: {email: email.toLowerCase()}
+                })
 
-            if(!user) return null
+                if(!user) return null
 
-            if(!bcryptjs.compareSync(password, user.password)) return null
+                if(!bcryptjs.compareSync(password, user.password)) return null
 
-            const {password: _, ...rest} = user
-            
-            return rest
-
+                const {password: _, ...rest} = user
+                
+                return rest
+            } catch (error) {
+                console.error('Database error during authentication:', error)
+                return null
+            }
         },
       }),
   ]
 } satisfies NextAuthConfig;
-
 
 export const {signIn, signOut, auth, handlers} = NextAuth(authConfig)

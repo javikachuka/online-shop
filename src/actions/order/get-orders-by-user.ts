@@ -1,7 +1,7 @@
 'use server'
 
 import { auth } from "@/auth.config";
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 
 export const getOrdersByUser = async (page: number = 1, take: number = 10) => {
     if (isNaN(Number(page)) || page < 1) page = 1;

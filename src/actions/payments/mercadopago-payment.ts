@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 import {MercadoPagoConfig, Preference, Payment} from "mercadopago"
 import { revalidatePath } from "next/cache";
 

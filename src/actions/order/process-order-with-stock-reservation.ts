@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 import { validateMercadoPagoPayment } from "../payments/validate-mercadopago-payment";
 import { auth } from "@/auth.config";
 import { 

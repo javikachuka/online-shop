@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 import { validateMercadoPagoPayment, validatePaymentIntegrity } from "../payments/validate-mercadopago-payment";
 
 interface SecureOrderProcessResult {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 
 // Simple in-memory store (se reinicia si reinicias el servidor)
 const rateLimitMap = new Map<string, { count: number; lastRequest: number }>();

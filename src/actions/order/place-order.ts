@@ -3,7 +3,7 @@
 import { auth } from "@/auth.config";
 import { Address, PaymentMethod } from "@/interfaces";
 import { calculateShippingCost } from "@/actions/shipping/calculate-shipping";
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 
 
 interface ProductToOrder {
