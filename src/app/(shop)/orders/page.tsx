@@ -4,7 +4,7 @@ import { Pagination, Title } from "@/components";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { IoBanOutline, IoCardOutline } from "react-icons/io5";
+import { IoBanOutline, IoCardOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
 
 interface Props {
     searchParams: {
@@ -92,32 +92,42 @@ export default async function OrdersPage({ searchParams }: Props) {
                                         {order.OrderAddress?.lastName}
                                     </td>
                                     <td className="flex items-center text-sm  text-gray-900 font-light px-6 py-4 whitespace-nowrap">
-                                        {order.isPaid ? (
+                                        {order.orderStatus === 'delivered' ? (
+                                            <>
+                                                <IoCheckmarkCircleOutline className="text-blue-800" />
+                                                <span className="mx-2 text-blue-800">
+                                                    Entregado
+                                                </span>
+                                            </>
+                                        ) : order.orderStatus === 'paid' || (order.isPaid && order.paymentStatus === 'paid') ? (
                                             <>
                                                 <IoCardOutline className="text-green-800" />
                                                 <span className="mx-2 text-green-800">
-                                                    Pagada
+                                                    Pagado
                                                 </span>
                                             </>
-                                        ) : order.paymentStatus === 'cancelled' ?
-                                                (
-                                                    <>
-                                                        <IoBanOutline className="text-red-800" />
-                                                        <span className="mx-2 text-red-800">
-                                                            Cancelada
-                                                        </span>
-                                                    </>
-                                                )
-                                            :
-                                                (
-                                                    <>
-                                                        <IoCardOutline className="text-red-800" />
-                                                        <span className="mx-2 text-red-800">
-                                                            No Pagada
-                                                        </span>
-                                                    </>
-                                                )
-                                        }
+                                        ) : order.orderStatus === 'cancelled' || order.paymentStatus === 'cancelled' ? (
+                                            <>
+                                                <IoBanOutline className="text-red-800" />
+                                                <span className="mx-2 text-red-800">
+                                                    Cancelado
+                                                </span>
+                                            </>
+                                        ) : order.orderStatus === 'expired' ? (
+                                            <>
+                                                <IoCloseCircleOutline className="text-orange-800" />
+                                                <span className="mx-2 text-orange-800">
+                                                    Expirado
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <IoTimeOutline className="text-yellow-800" />
+                                                <span className="mx-2 text-yellow-800">
+                                                    Pendiente de pago
+                                                </span>
+                                            </>
+                                        )}
                                     </td>
                                     <td className="text-sm text-gray-900 font-light px-6 ">
                                         {new Date(order.createdAt).toLocaleString()}

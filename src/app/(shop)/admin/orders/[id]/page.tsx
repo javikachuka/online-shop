@@ -1,10 +1,9 @@
 import { getDefaultCompany, getOrderByIdAdmin } from "@/actions";
-import { MercadoPagoButton, OrderStatus, PayPalButton, ProductImage, Title } from "@/components";
+import { OrderStatus, ProductImage, Title } from "@/components";
 import { currencyFormat, getNameAttributes } from "@/utils";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { IoBanOutline, IoCartOutline, IoWalletOutline } from "react-icons/io5";
+import { IoBanOutline, IoWalletOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
 import { ConfirmOrderActions } from "./ConfirmOrderActions.client";
 
 interface Props {
@@ -52,26 +51,32 @@ export default async function CategoryPage({ params }: Props) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
                     {/* Carrito */}
                     <div className="flex flex-col mt-5">
-                        {orderData.order?.isPaid ? (
+                        {orderData.order?.orderStatus === 'delivered' ? (
                             <OrderStatus
-                                status={"Pagada"}
+                                status={"Entregado"}
+                                Icon={IoCheckmarkCircleOutline}
+                                colorClass="bg-blue-700" />
+                        ) : orderData.order?.orderStatus === 'paid' || (orderData.order?.isPaid && orderData.order?.paymentStatus === 'paid') ? (
+                            <OrderStatus
+                                status={"Pagado"}
                                 Icon={IoWalletOutline}
                                 colorClass="bg-green-700" />
-                        ) : orderData.order?.paymentStatus === 'cancelled' ?
-                            (
-                                <OrderStatus
-                                    status={"Cancelada"}
-                                    Icon={IoBanOutline}
-                                    colorClass="bg-red-500" />
-                            ) :
-                        
-                            (
-                                <OrderStatus
-                                    status={"Pendiente de pago"}
-                                    Icon={IoCartOutline}
-                                    colorClass="bg-red-500" />
-                            )
-                        }
+                        ) : orderData.order?.orderStatus === 'cancelled' || orderData.order?.paymentStatus === 'cancelled' ? (
+                            <OrderStatus
+                                status={"Cancelado"}
+                                Icon={IoBanOutline}
+                                colorClass="bg-red-500" />
+                        ) : orderData.order?.orderStatus === 'expired' ? (
+                            <OrderStatus
+                                status={"Expirado"}
+                                Icon={IoCloseCircleOutline}
+                                colorClass="bg-orange-500" />
+                        ) : (
+                            <OrderStatus
+                                status={"Pendiente de pago"}
+                                Icon={IoTimeOutline}
+                                colorClass="bg-yellow-500" />
+                        )}
 
                         {/* Items */}
                         {orderItems.map((item) => (
@@ -186,15 +191,28 @@ export default async function CategoryPage({ params }: Props) {
 
                         <div className="flex gap-4 mb-2 mt-4">
                             {orderData.order?.id && (
-                                <ConfirmOrderActions orderId={orderData.order.id} isPaid={orderData.order.isPaid} status={orderData.order.paymentStatus} />
+                                <ConfirmOrderActions 
+                                    orderId={orderData.order.id} 
+                                    isPaid={orderData.order.isPaid} 
+                                    status={orderData.order.paymentStatus} 
+                                    orderStatus={orderData.order.orderStatus}
+                                />
                             )}
                         </div>
 
                             {
-                                (orderData.order?.isPaid === true && orderData.order.paymentStatus === 'paid' )? (
+                                orderData.order?.orderStatus === 'delivered' ? (
                                     <div className="mt-5 mb-2 w-full">
                                         <OrderStatus
-                                            status={"Pagada"}
+                                            status={"Entregado"}
+                                            Icon={IoCheckmarkCircleOutline}
+                                            colorClass="bg-blue-700" 
+                                        />
+                                    </div>
+                                ) : (orderData.order?.isPaid === true && orderData.order.paymentStatus === 'paid') ? (
+                                    <div className="mt-5 mb-2 w-full">
+                                        <OrderStatus
+                                            status={"Pagado - Pendiente de entrega"}
                                             Icon={IoWalletOutline}
                                             colorClass="bg-green-700" 
                                         />
