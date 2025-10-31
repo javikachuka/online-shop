@@ -124,10 +124,10 @@ export async function resetPassword(token: string, newPassword: string): Promise
     }
 
     // Validar fortaleza de contraseña
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return {
         ok: false,
-        message: 'La contraseña debe tener al menos 6 caracteres'
+        message: 'La contraseña debe tener al menos 8 caracteres'
       };
     }
 
