@@ -194,11 +194,7 @@ export const ProductForm = ({
         price: "",
         stock: "",
         sku: "",
-        attributes: attributes.map((attr) => ({
-            id: "",
-            attributeId: attr.id,
-            value: "",
-        })),
+        attributes: [] as Array<{ id: string; attributeId: string; value: string }>, // ← FIX: Inicializar vacío
         discountPercent: "",
         order: 0,
     });
@@ -216,28 +212,29 @@ export const ProductForm = ({
 
     // Manejar selección de atributos
     const handleAttributeCheckbox = (attributeId: string, checked: boolean) => {
-        setSelectedAttributeIds((prev) =>
-            checked
+        setSelectedAttributeIds((prev) => {
+            const newSelected = checked
                 ? [...prev, attributeId]
-                : prev.filter((id) => id !== attributeId)
-        );
-        // Reiniciar los valores de atributos en el formulario de variante
-        setNewVariant((prev) => ({
-            ...prev,
-            attributes: attributes
-                .filter((attr) =>
-                    checked
-                        ? [
-                              ...prev.attributes.map((a) => a.attributeId),
-                              attributeId,
-                          ].includes(attr.id)
-                        : prev.attributes
-                              .map((a) => a.attributeId)
-                              .filter((id) => id !== attributeId)
-                              .includes(attr.id)
-                )
-                .map((attr) => ({ id: attr.id ,attributeId: attr.id, value: "" })),
-        }));
+                : prev.filter((id) => id !== attributeId);
+            
+            // ← FIX: Actualizar newVariant basándose en los nuevos selectedAttributeIds
+            setNewVariant((prevVariant) => ({
+                ...prevVariant,
+                attributes: attributes
+                    .filter((attr) => newSelected.includes(attr.id))
+                    .map((attr) => {
+                        // Preservar el valor existente si ya estaba seleccionado
+                        const existing = prevVariant.attributes.find(a => a.attributeId === attr.id);
+                        return {
+                            id: existing?.id || "",
+                            attributeId: attr.id,
+                            value: existing?.value || "",
+                        };
+                    }),
+            }));
+            
+            return newSelected;
+        });
     };
 
     const [variantModalOpen, setVariantModalOpen] = useState(false);
@@ -245,6 +242,21 @@ export const ProductForm = ({
 
     const openAddVariantModal = () => {
         setEditVariantIndex(null);
+        // ← FIX: Inicializar correctamente los atributos basándose en selectedAttributeIds
+        setNewVariant({
+            price: "",
+            stock: "",
+            sku: "",
+            attributes: attributes
+                .filter((attr) => selectedAttributeIds.includes(attr.id))
+                .map((attr) => ({
+                    id: "",
+                    attributeId: attr.id,
+                    value: "",
+                })),
+            discountPercent: "",
+            order: 0,
+        });
         setVariantModalOpen(true);
     };
     const openEditVariantModal = (idx: number) => {
@@ -275,11 +287,13 @@ export const ProductForm = ({
             price: "",
             stock: "",
             sku: "",
-            attributes: attributes.map((attr) => ({
-                id: "",
-                attributeId: "",
-                value: "",
-            })),
+            attributes: attributes
+                .filter((attr) => selectedAttributeIds.includes(attr.id))
+                .map((attr) => ({
+                    id: "",
+                    attributeId: attr.id, // ← FIX: Usar attr.id en lugar de string vacío
+                    value: "",
+                })),
             discountPercent: "",
             order: 0,
         });
