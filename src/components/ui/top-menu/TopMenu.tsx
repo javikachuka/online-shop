@@ -27,7 +27,7 @@ export const TopMenu = ({categories = [], company}: Props) => {
         setLoaded(true)
     },[])
   return (
-    <nav className="flex px-5 justify-between items-center w-full">
+    <nav className="flex px-4 md:px-5 justify-between items-center w-full">
         <div>
             <Link
                 href={'/'}
@@ -36,7 +36,7 @@ export const TopMenu = ({categories = [], company}: Props) => {
                     ? <Image 
                         src={company.logo} 
                         alt={company.name || 'Logo'} 
-                        className="object-contain max-h-[50px]"
+                        className="object-contain max-h-[50px] max-md:object-left"
                         width={112}
                         height={40}
                       />
