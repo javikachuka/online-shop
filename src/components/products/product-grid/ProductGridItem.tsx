@@ -33,7 +33,7 @@ export const ProductGridItem = ({product}:Props) => {
             <ProductImage 
                 src={displayImage}
                 alt={product.title}
-                className="w-full object-cover rounded"
+                className="w-full object-cover rounded max-h-[200px] md:max-h-[300px] lg:max-h-[400px]"
                 width={500}
                 height={500}
                 onMouseEnter={handleMouseEnter}

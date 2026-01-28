@@ -32,8 +32,7 @@ export const ProductImage = ({
             alt={alt} 
             className={className} 
             width={width || 300} 
-            height={height || 300} 
-            style={{objectFit: 'contain'}}
+            height={height || 300}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         />
