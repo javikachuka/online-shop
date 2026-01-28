@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth.config";
 import { Address, PaymentMethod } from "@/interfaces";
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 
 
 interface ProductToOrder {

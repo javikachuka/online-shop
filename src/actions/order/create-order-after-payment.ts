@@ -1,7 +1,7 @@
 'use server'
 
 import { Address, PaymentMethod } from "@/interfaces";
-import prisma from "@/lib/prisma";
+import {prisma} from "@/lib/prisma";
 
 interface ProductToOrder {
   variantId: string;

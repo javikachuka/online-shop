@@ -1,6 +1,6 @@
 'use server';
 
-import prisma from '@/lib/prisma';
+import {prisma} from '@/lib/prisma';
 import { normalizeSearchText, validateSearchTerm, calculateRelevance } from '@/utils/search-utils';
 
 export interface SearchFilters {

@@ -1,6 +1,6 @@
 'use server';
 
-import prisma from '@/lib/prisma';
+import {prisma} from '@/lib/prisma';
 import { Company, CreateCompanyInput, UpdateCompanyInput } from '@/interfaces';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 
@@ -272,7 +272,8 @@ export const getCompanyNameLogo = async () => {
         where: { isDefault: true },
         select: {
           name: true,
-          logo: true
+          logo: true,
+          phone: true
         }
       });
 

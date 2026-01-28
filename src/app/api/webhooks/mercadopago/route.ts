@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import {prisma} from '@/lib/prisma';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 
 const mercadopago = new MercadoPagoConfig({

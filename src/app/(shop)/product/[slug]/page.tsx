@@ -66,14 +66,8 @@ export default async function ProductPage({params} : Props) {
   if (!product) {
     notFound();
   }
-
-  console.log(product.variants);
   
-  const filters = getAvailableFilters(product.variants || []);
-
-  console.log(filters);
-  
-
+  const filters = getAvailableFilters(product.variants || []);  
 
   return (
     <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3">

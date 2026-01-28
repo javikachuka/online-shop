@@ -28,10 +28,19 @@ const LoginForm = () => {
 
             <label htmlFor="password">Contraseña</label>
             <input
-                className="px-5 py-2 border bg-gray-200 rounded mb-5"
+                className="px-5 py-2 border bg-gray-200 rounded mb-2"
                 name="password"
                 type="password"
             />
+
+            <div className="text-right mb-5">
+                <Link
+                    href="/auth/forgot-password"
+                    className="text-sm text-blue-600 hover:text-blue-500 hover:underline"
+                >
+                    ¿Olvidaste tu contraseña?
+                </Link>
+            </div>
 
             <LoginButton />
 

@@ -17,8 +17,6 @@ export default async function CategoryPage({ params }: Props) {
     const { id } = params;
 
     const orderData = await getOrderByIdAdmin(id);
-
-    console.log(orderData.order?.OrderItem);
     
     
     if(orderData.ok === false) {

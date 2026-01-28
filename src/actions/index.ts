@@ -14,6 +14,7 @@ export * from './order/get-orders-by-user'
 export * from './order/get-paginated-orders'
 export * from './order/get-order-by-id-admin'
 export * from './order/confirm-cancel-order'
+export * from './order/mark-order-delivered'
 
 export * from './address/set-user-address'
 export * from './address/get-user-address'

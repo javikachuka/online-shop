@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { inter } from "@/config/fonts";
 
 import "./globals.css";
-import { Providers } from "@/components";
+import { Providers, GoogleAnalytics } from "@/components";
 
 
 
@@ -22,6 +22,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        {/* Google Analytics 4 */}
+        <GoogleAnalytics 
+          measurementId={process.env.NEXT_PUBLIC_GA4_MEASUREMENT_ID || ''} 
+        />
+        
         <Providers>
           {children}
         </Providers>

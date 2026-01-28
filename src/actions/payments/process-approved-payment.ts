@@ -1,7 +1,7 @@
 'use server'
 
 import { validateMercadoPagoPayment } from './validate-mercadopago-payment';
-import prisma from '@/lib/prisma';
+import {prisma} from '@/lib/prisma';
 
 interface ProcessApprovedPaymentResult {
     ok: boolean;

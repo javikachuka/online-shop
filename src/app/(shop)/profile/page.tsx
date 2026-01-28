@@ -23,8 +23,6 @@ export default async function ProfilePage() {
         redirect('/')
     }
 
-    console.log(session.user)
-
     return (
         <div className="flex justify-center items-center mb-72 px-4 sm:px-0">
             <div className="w-full max-w-2xl">

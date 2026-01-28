@@ -37,14 +37,11 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
         progressToFreeShipping 
     } = useOrderSummary(address.deliveryMethod || 'delivery');
 
-    console.log(shippingCost, freeShipping);
-
     useEffect(() => {
         setLoaded(true);
     }, []);
 
     const onPlaceOrder = async () => {
-        console.log(cart);
         
         setIsPlacingOrder(true)
 
@@ -53,8 +50,6 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
             quantity: variant.quantity,
 
         }))
-
-        console.log(selectedPayment);
         
         
 

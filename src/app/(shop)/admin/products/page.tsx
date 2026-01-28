@@ -1,4 +1,8 @@
 // https://tailwindcomponents.com/component/hoverable-table
+// Agregar a todas las páginas de admin que usen headers
+export const dynamic = 'force-dynamic';
+// O alternativamente:
+export const revalidate = 0;
 import { getPaginatedProducts } from "@/actions/product/get-paginated-products";
 import { Pagination, ProductImage, Title } from "@/components";
 

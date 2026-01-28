@@ -1,3 +1,7 @@
+// Agregar a todas las páginas de admin que usen headers
+export const dynamic = 'force-dynamic';
+// O alternativamente:
+export const revalidate = 0;
 import { getAllAtributes, getAllEnabledCategories, getProductBySlug } from "@/actions";
 import { Title } from "@/components";
 import { notFound } from "next/navigation";
@@ -17,8 +21,6 @@ export default async function ProductPage({ params }: Props) {
         getAllEnabledCategories(),
         getAllAtributes()
     ]);
-
-    console.log({attributes});
     
 
     if(!product && slug !== 'new') {
