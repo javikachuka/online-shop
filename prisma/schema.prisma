@@ -55,6 +55,10 @@ model ProductImage {
   url       String
   product   Product  @relation(fields: [productId], references: [id])
   productId String
+
+  variants  ProductVariant[] 
+
+  @@index([productId])
 }
 
 model ProductVariant {
@@ -71,6 +75,8 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   order     Int   @default(autoincrement())
+  // Relación con imágenes
+  images    ProductImage[]
 }
 
 model Attribute {

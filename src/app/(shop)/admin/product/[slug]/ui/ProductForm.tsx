@@ -16,6 +16,10 @@ import { Toaster, toast } from 'sonner';
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal/Modal"; // Asume que tienes un componente Modal reutilizable
 
+interface ComboAttribute {
+    attributeId: string;
+    value: string;
+}
 interface Props {
     product: Partial<Product> & { ProductImage?: ProductImage[] };
     categories: Category[];
@@ -58,6 +62,13 @@ export const ProductForm = ({
 
     const [slug, setSlug] = useState<string>(product?.slug || "");
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+
+        // --- NUEVOS ESTADOS SENIOR ---
+    const [visualAttributeId, setVisualAttributeId] = useState<string | null>(null);
+    // Agrupamos las imágenes nuevas por el valor del atributo (ej: { "Negro": [File, File], "Plata": [File] })
+    const [groupedNewImages, setGroupedNewImages] = useState<Record<string, File[]>>({});
+
+    const [selectedValuesForMatrix, setSelectedValuesForMatrix] = useState<Record<string, string[]>>({});
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -180,6 +191,23 @@ export const ProductForm = ({
             updatedImages.forEach(file => dt.items.add(file));
             fileInputRef.current.files = dt.files;
         }
+    };
+
+        // Manejador para cuando cambian las imágenes de un grupo específico
+    const handleGroupedImagesChange = (groupValue: string, files: FileList | null) => {
+        if (!files) return;
+        const fileArray = Array.from(files);
+        setGroupedNewImages(prev => ({
+            ...prev,
+            [groupValue]: [...(prev[groupValue] || []), ...fileArray]
+        }));
+    };
+
+    const removeImageFromGroup = (groupValue: string, index: number) => {
+        setGroupedNewImages(prev => ({
+            ...prev,
+            [groupValue]: prev[groupValue].filter((_, i) => i !== index)
+        }));
     };
 
     // Validar que todos los variantes tengan los mismos tipos de atributos
@@ -401,6 +429,83 @@ export const ProductForm = ({
         return valid;
     };
 
+    // --- LÓGICA CRÍTICA: Obtener grupos reales basados en variantes cargadas ---
+    // Esta función analiza las variantes actuales y extrae los valores únicos del atributo visual
+    const getActiveVisualGroups = () => {
+        if (!visualAttributeId) return ["General"];
+        
+        const activeValues = new Set<string>();
+        variants.forEach(v => {
+            const attr = v.attributes.find(a => a.attributeId === visualAttributeId);
+            if (attr && attr.value) activeValues.add(attr.value);
+        });
+        
+        return Array.from(activeValues);
+    };
+
+    const activeGroups = getActiveVisualGroups();
+
+        // --- RENDERIZADO DINÁMICO DE DROPZONES ---
+    const renderImageZones = () => {
+        const visualAttr = attributes.find(a => a.id === visualAttributeId);
+        
+        // Si no hay atributo visual seleccionado, mostramos un cargador general
+        if (!visualAttributeId || !visualAttr) {
+            return (
+                <div className="border-2 border-dashed p-4 rounded-md">
+                    <span className="block mb-2 font-medium">Imágenes Generales</span>
+                    <input 
+                        type="file" multiple 
+                        onChange={(e) => handleGroupedImagesChange("general", e.target.files)} 
+                    />
+                    {renderPreview("general")}
+                </div>
+            );
+        }
+
+        // Si hay atributo visual (ej: Color), generamos una zona por cada valor (Rojo, Azul, etc.)
+        return (
+            <div className="space-y-6">
+                <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                    Carga las imágenes específicas para cada <strong>{visualAttr.name}</strong>.
+                </p>
+                {visualAttr.values.map(val => (
+                    <div key={val.id} className="border p-4 rounded-lg bg-white shadow-sm">
+                        <span className="block mb-3 font-bold text-gray-700">Variante: {val.value}</span>
+                        <input 
+                            type="file" 
+                            multiple 
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            onChange={(e) => handleGroupedImagesChange(val.value, e.target.files)} 
+                        />
+                        {renderPreview(val.value)}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    const renderPreview = (groupKey: string) => (
+        <div className="grid grid-cols-3 gap-2 mt-3">
+            {groupedNewImages[groupKey]?.map((file, idx) => (
+                <div key={idx} className="relative group">
+                    <img 
+                        src={URL.createObjectURL(file)} 
+                        className="w-full h-24 object-cover rounded-md" 
+                        alt="preview" 
+                    />
+                    <button
+                        type="button"
+                        onClick={() => removeImageFromGroup(groupKey, idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <IoCloseOutline size={16} />
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
+
     const handleSubmitForm = async (data: FormInputs) => {
         if(!isValid) return;
         if (!validateProductForm()) return;
@@ -438,6 +543,16 @@ export const ProductForm = ({
         // Solo IDs de imágenes a borrar
         imagesToDelete.forEach(id => formData.append('imagesToDelete[]', id));
 
+                // Enviamos la relación de qué imagen pertenece a qué grupo
+        // Estructura: groupedNewImages = { "Rojo": [File1, File2], "Azul": [File3] }
+        Object.entries(groupedNewImages).forEach(([groupValue, files]) => {
+            files.forEach(file => {
+                formData.append(`images_${groupValue}`, file); 
+            });
+        });
+
+        formData.append('visualAttributeId', visualAttributeId || "");
+
         
         // Enviar a server action o API
         const {ok, product:updatedProduct, imageError} = await saveOrUpdateProduct(formData);
@@ -460,181 +575,205 @@ export const ProductForm = ({
         // Opcional: redirigir o limpiar formulario
 
     }
+    const generateMatrix = () => {
+        const selectedAttrs = attributes.filter(attr => selectedAttributeIds.includes(attr.id));
+        
+        // Tipamos el acumulador como un array de arrays de ComboAttribute
+        const combinations = selectedAttrs.reduce((acc: ComboAttribute[][], attr) => {
+            const values = selectedValuesForMatrix[attr.id] || [];
+            
+            if (acc.length === 0) {
+                return values.map(v => [{ attributeId: attr.id, value: v }]);
+            }
+            
+            return acc.flatMap(combo => 
+                values.map(v => [...combo, { attributeId: attr.id, value: v }])
+            );
+        }, []);
+
+        const newVariants = combinations.map(combo => ({
+            id: Math.random().toString(36).substring(7),
+            price: getValues("diffPrice") ? "0" : (product?.variants?.[0]?.price.toString() || "0"),
+            stock: "0",
+            // Aquí 'c' ya sabe que tiene .value gracias al tipado de combinations
+            sku: `${getValues("slug").toUpperCase()}-${combo.map((c: ComboAttribute) => c.value.substring(0,3).toUpperCase()).join("-")}`,
+            attributes: combo.map((c: ComboAttribute) => ({
+                attributeId: c.attributeId,
+                value: c.value,
+                valueId: attributes
+                    .find(a => a.id === c.attributeId)
+                    ?.values?.find(v => v.value === c.value)?.id || ""
+            })),
+            discountPercent: "0",
+            order: 0
+        }));
+
+        setVariants([...variants, ...newVariants]);
+    };
+
+    // Esta función filtra las imágenes que ya pertenecen al producto según el grupo
+    const getExistingImagesByGroup = (groupName: string) => {
+        if (!product.ProductImage) return [];
+
+        // Si el grupo es "General", mostramos imágenes que NO tienen variantes asociadas
+        if (groupName === "General") {
+            return product.ProductImage.filter(img => !img.variants || img.variants.length === 0);
+        }
+
+        // Si hay un atributo visual, filtramos imágenes cuya variante coincida con el nombre del grupo
+        return product.ProductImage.filter(img => 
+            img.variants?.some(v => 
+                v.attributes.some(attr => attr.value === groupName)
+            )
+        );
+    };
 
     return (
         <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 mb-16 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
             {/* Textos */}
-            <div className="w-full">
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Título</span>
-                    <input
-                        type="text"
-                        className="p-2 border rounded-md bg-gray-200"
-                        {...register("title", { required: true })}
-                        onChange={handleTitleChange}
-                    />
-                    {formErrors.title && <span className="text-red-500 text-xs">{formErrors.title}</span>}
-                </div>
-
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Slug</span>
-                    <input
-                        type="text"
-                        className="p-2 border rounded-md bg-gray-200"
-                        value={slug}
-                        onChange={handleSlugChange}
-                        onBlur={handleSlugBlur}
-                    />
-                    {formErrors.slug && <span className="text-red-500 text-xs">{formErrors.slug}</span>}
-                    <span className="text-xs text-gray-500">Identificador URL. Autogenerada basada en el titulo, se puede editar manualmente.</span>
-                </div>
-
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Descripción</span>
-                    <textarea
-                        rows={5}
-                        className="p-2 border rounded-md bg-gray-200"
-                        {...register("description", { required: true })}
-                    ></textarea>
-                </div>
-
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Habilitar producto</span>
-                    <div className="inline-flex items-center mb-4">
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                {...register("isEnabled")}
-                            />
-                            <span>{`Producto habilitado?`}</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Tags</span>
-                    <input
-                        type="text"
-                        className="p-2 border rounded-md bg-gray-200"
-                        {...register("tags")}
-                    />
-                </div>
-
-                <div className="flex flex-col mb-2">
-                    <span className="text-lg">Categorías</span>
-                    <CategoryCheckboxTree
-                        categories={categories}
-                        selectedIds={selectedCategoryIds}
-                        onChange={handleCategoryChange}
-                    />
-                    {formErrors.categories && <span className="text-red-500 text-xs">{formErrors.categories}</span>}
-                </div>
-
-                
-            </div>
-
-            {/* Selector de tallas y fotos */}
-            <div className="w-full">
-                {/* As checkboxes */}
-                <div className="flex flex-col">
-                    {/* Fotos */}
+            <div className="space-y-6">
+                <section className="bg-white p-4 border rounded-md">
+                    <h3 className="text-lg font-bold mb-4">1. Datos Generales</h3>
+                    {/* ... (Título, Slug, Descripción) ... */}
                     <div className="flex flex-col mb-2">
-                        <span className="text-lg">Imágenes</span>
+                        <span className="text-lg">Título</span>
                         <input
-                            type="file"
-                            multiple
+                            type="text"
                             className="p-2 border rounded-md bg-gray-200"
-                            accept="image/png, image/jpeg, image/jpg, image/avif"
-                            onChange={handleNewImagesChange}
-                            ref={fileInputRef}
+                            {...register("title", { required: true })}
+                            onChange={handleTitleChange}
                         />
-                        {formErrors.images && <span className="text-red-500 text-xs">{formErrors.images}</span>}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {/* Imágenes existentes */}
-                        {product?.ProductImage?.filter(img => !imagesToDelete.includes(img.id)).map(image => (
-                            <div key={image.id} className="relative">
-                                <ProductImageCmp 
-                                    src={image.url}
-                                    alt="alt"
-                                    width={300}
-                                    height={300}
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-800 transition"
-                                    onClick={() => handleRemoveImage(image.id)}
-                                    aria-label="Eliminar imagen"
-                                >
-                                    <IoCloseOutline />
-                                </button>
-                            </div>
-                        ))}
-                        {/* Imágenes nuevas (preview) */}
-                        {newImages.map((file, idx) => {
-                            const url = URL.createObjectURL(file);
-                            return (
-                                <div key={idx} className="relative">
-                                    <ProductImageCmp 
-                                        src={url}
-                                        alt="preview"
-                                        width={300}
-                                        height={300}
-                                        className="rounded object-cover"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 shadow-lg hover:bg-red-800 transition"
-                                        onClick={() => handleRemoveNewImage(idx)}
-                                        aria-label="Eliminar imagen nueva"
-                                    >
-                                        <IoCloseOutline />
-                                    </button>
-                                </div>
-                            );
-                        })}
+                        {formErrors.title && <span className="text-red-500 text-xs">{formErrors.title}</span>}
                     </div>
 
                     <div className="flex flex-col mb-2">
-                        <span className="text-lg">Variantes</span>
+                        <span className="text-lg">Slug</span>
+                        <input
+                            type="text"
+                            className="p-2 border rounded-md bg-gray-200"
+                            value={slug}
+                            onChange={handleSlugChange}
+                            onBlur={handleSlugBlur}
+                        />
+                        {formErrors.slug && <span className="text-red-500 text-xs">{formErrors.slug}</span>}
+                        <span className="text-xs text-gray-500">Identificador URL. Autogenerada basada en el titulo, se puede editar manualmente.</span>
+                    </div>
+
+                    <div className="flex flex-col mb-2">
+                        <span className="text-lg">Descripción</span>
+                        <textarea
+                            rows={5}
+                            className="p-2 border rounded-md bg-gray-200"
+                            {...register("description", { required: true })}
+                        ></textarea>
+                    </div>
+
+                    <div className="flex flex-col mb-2">
+                        <span className="text-lg">Habilitar producto</span>
                         <div className="inline-flex items-center mb-4">
                             <label className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
-                                    {...register("diffPrice")}
+                                    {...register("isEnabled")}
                                 />
-                                <span>{`Variantes con diferente precio?`}</span>
+                                <span>{`Producto habilitado?`}</span>
                             </label>
                         </div>
-                        {/* Paso 1: Selección de atributos */}
-                        <div className="flex flex-col mb-4">
-                            <span className="mb-2">
-                                Atributos para variantes
-                            </span>
+                    </div>
 
-                            <div className="flex flex-wrap gap-4">
-                                {attributes.map((attr) => (
-                                    <label
-                                        key={attr.id}
-                                        className="flex items-center gap-2"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedAttributeIds.includes(
-                                                attr.id
-                                            )}
-                                            onChange={(e) =>
-                                                handleAttributeCheckbox(
-                                                    attr.id,
-                                                    e.target.checked
-                                                )
-                                            }
-                                        />
-                                        <span>{attr.name}</span>
-                                    </label>
-                                ))}
-                            </div>
+                    <div className="flex flex-col mb-2">
+                        <span className="text-lg">Tags</span>
+                        <input
+                            type="text"
+                            className="p-2 border rounded-md bg-gray-200"
+                            {...register("tags")}
+                        />
+                    </div>
+
+                    <div className="flex flex-col mb-2">
+                        <span className="text-lg">Categorías</span>
+                        <CategoryCheckboxTree
+                            categories={categories}
+                            selectedIds={selectedCategoryIds}
+                            onChange={handleCategoryChange}
+                        />
+                        {formErrors.categories && <span className="text-red-500 text-xs">{formErrors.categories}</span>}
+                    </div>
+                    {/* --- BLOQUE NUEVO: CONFIGURACIÓN DE ESTRUCTURA --- */}
+                    <div className="bg-gray-50 p-4 border rounded-md mb-6">
+                    <h3 className="text-sm font-bold uppercase text-gray-600 mb-4">Estructura de Atributos</h3>
+                    
+                    {/* Checkboxes de selección de atributos (esto ya lo tenías, mantenlo pero agrúpalo aquí) */}
+                    <div className="flex flex-wrap gap-3 mb-6">
+                        {attributes.map((attr) => (
+                        <label key={attr.id} className="flex items-center gap-2 bg-white border p-2 rounded-md cursor-pointer hover:shadow-sm">
+                            <input
+                            type="checkbox"
+                            checked={selectedAttributeIds.includes(attr.id)}
+                            onChange={(e) => handleAttributeCheckbox(attr.id, e.target.checked)}
+                            />
+                            <span className="text-sm">{attr.name}</span>
+                        </label>
+                        ))}
+                    </div>
+
+                    {/* NUEVO: Selectores múltiples para generar la matriz */}
+                    {selectedAttributeIds.map(id => {
+                        const attr = attributes.find(a => a.id === id);
+                        return (
+                        <div key={id} className="mb-4">
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">VALORES PARA {attr?.name}:</label>
+                            <select 
+                            multiple 
+                            className="w-full border p-2 rounded-md h-32 text-sm focus:ring-2 focus:ring-blue-500"
+                            onChange={(e) => {
+                                const vals = Array.from(e.target.selectedOptions).map(o => o.value);
+                                setSelectedValuesForMatrix(prev => ({ ...prev, [id]: vals }));
+                            }}
+                            >
+                            {attr?.values.map(v => <option key={v.id} value={v.value}>{v.value}</option>)}
+                            </select>
+                            <p className="text-[10px] text-gray-400 mt-1">Mantén presionado Ctrl (o Cmd) para seleccionar varios</p>
                         </div>
+                        );
+                    })}
+                    
+                    <button 
+                        type="button" 
+                        onClick={generateMatrix} 
+                        className="w-full bg-blue-600 text-white text-sm font-bold p-3 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                        GENERAR COMBINACIONES AUTOMÁTICAMENTE
+                    </button>
+                    </div>
+                </section>
+                <section className="bg-white p-4 border rounded-md">
+                    <h3 className="text-lg font-bold mb-4">2. Configuración de Variantes</h3>
+                    {/* Selector de qué atributo es visual */}
+                    <div className="mb-4">
+                        <label className="text-sm font-medium">¿Qué atributo define las fotos?</label>
+                        <select 
+                            className="w-full p-2 border rounded-md"
+                            value={visualAttributeId || ""}
+                            onChange={(e) => setVisualAttributeId(e.target.value || null)}
+                        >
+                            <option value="">Ninguno (Fotos generales)</option>
+                            {attributes
+                                .filter(a => selectedAttributeIds.includes(a.id))
+                                .map(a => <option key={a.id} value={a.id}>{a.name}</option>)
+                            }
+                        </select>
+                    </div>
+
+                    <button type="button" 
+                        className={`btn-primary mb-4 ${selectedAttributeIds.length === 0 ? 'btn-disabled' : ''}`}
+                        disabled={selectedAttributeIds.length === 0} 
+                        onClick={openAddVariantModal}>
+                        + Agregar Variante
+                    </button>
+
+                    {/* Tu Tabla de Variantes Actualizada */}
+                    <div className="overflow-x-auto">
                         {/* Tabla de variantes */}
                         <table className="w-full text-sm border mb-2">
                             <thead>
@@ -676,8 +815,9 @@ export const ProductForm = ({
                                         <td className="p-2">
                                             <button
                                                 type="button"
-                                                className="text-blue-600 underline mr-2"
+                                                className={`text-blue-600 underline mr-2 ${selectedAttributeIds.length === 0 ? 'disabled:cursor-not-allowed': ''}`}
                                                 onClick={() => openEditVariantModal(idx)}
+                                                disabled={selectedAttributeIds.length === 0}
                                             >
                                                 Editar
                                             </button>
@@ -694,20 +834,121 @@ export const ProductForm = ({
                             </tbody>
                         </table>
                         {formErrors.variants && <span className="text-red-500 text-xs">{formErrors.variants}</span>}
-                        {/* Formulario para nueva variante */}
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            <button
-                                type="button"
-                                className="btn-primary"
-                                onClick={openAddVariantModal}
+                    </div>
+                </section>
+            </div>
+
+            {/* COLUMNA DERECHA: Activos Visuales */}
+            <div className="space-y-6">
+                <section className="bg-gray-50 p-4 border rounded-md sticky top-4">
+                   {/* --- BLOQUE NUEVO: GALERÍA POR VARIANTE --- */}
+                    <div className="flex flex-col mb-4 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                        <h3 className="text-sm font-bold uppercase text-gray-600 mb-4">3. Galería de Fotos</h3>
+
+                        {/* Selector de Atributo Visual */}
+                        <div className="mb-6">
+                            <label className="text-xs font-bold text-blue-700 mb-2 block">¿QUÉ ATRIBUTO CAMBIA LA FOTO?</label>
+                            <select 
+                            className="w-full p-2 border rounded-md bg-white text-sm"
+                            value={visualAttributeId || ""}
+                            onChange={(e) => setVisualAttributeId(e.target.value)}
                             >
-                                Agregar variante
-                            </button>
+                            <option value="">Ninguno (Fotos generales únicamente)</option>
+                            {attributes
+                                .filter(a => selectedAttributeIds.includes(a.id))
+                                .map(a => <option key={a.id} value={a.id}>{a.name}</option>)
+                            }
+                            </select>
+                        </div>
+
+                        {/* Zonas de carga dinámicas basadas en las variantes de la tabla */}
+                        <div className="space-y-6">
+                            {Array.from(new Set(variants.map(v => 
+                                v.attributes.find(a => a.attributeId === visualAttributeId)?.value || "General"
+                            ))).map(groupName => (
+                            <div key={groupName} className="p-3 bg-white border rounded-md shadow-sm">
+                                <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-bold text-gray-700">Fotos: {groupName}</span>
+                                <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Grupo</span>
+                                </div>
+                                
+                                <input 
+                                type="file" 
+                                multiple 
+                                accept="image/*"
+                                className="text-xs w-full mb-3 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700"
+                                onChange={(e) => handleGroupedImagesChange(groupName, e.target.files)} 
+                                />
+
+                                {/* imagenes a mostar */}
+                                <div className="grid grid-cols-4 gap-2">
+                                
+                                {/* A. IMÁGENES QUE YA ESTÁN EN EL SERVIDOR */}
+                                {getExistingImagesByGroup(groupName).map((img) => (
+                                    <div key={img.id} className="relative aspect-square">
+                                    <img 
+                                        src={img.url} 
+                                        className="w-full h-full object-cover rounded-md border-2 border-blue-200" 
+                                        alt="server-image"
+                                    />
+                                    <button 
+                                        type="button"
+                                        // Función para agregar al array imagesToDelete
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
+                                    >
+                                        <IoCloseOutline size={12}/>
+                                    </button>
+                                    </div>
+                                ))}
+
+                                {/* B. IMÁGENES NUEVAS (LOCALES) - Tu lógica actual */}
+                                {groupedNewImages[groupName]?.map((file, idx) => (
+                                    <div key={idx} className="relative aspect-square">
+                                    <img 
+                                        src={URL.createObjectURL(file)} 
+                                        className="w-full h-full object-cover rounded-md border-2 border-green-200" 
+                                        alt="preview"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeImageFromGroup(groupName, idx)}
+                                        className="absolute -top-1 -right-1 bg-gray-500 text-white rounded-full p-0.5"
+                                    >
+                                        <IoCloseOutline size={12}/>
+                                    </button>
+                                    </div>
+                                ))}
+                                </div>
+
+                                {/* Preview de imágenes del grupo */}
+                                <div className="grid grid-cols-4 gap-2">
+                                {groupedNewImages[groupName]?.map((file, idx) => (
+                                    <div key={idx} className="relative aspect-square">
+                                    <img 
+                                        src={URL.createObjectURL(file)} 
+                                        className="w-full h-full object-cover rounded-md border" 
+                                        alt="preview"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeImageFromGroup(groupName, idx)}
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
+                                    >
+                                        <IoCloseOutline size={12}/>
+                                    </button>
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                            ))}
                         </div>
                     </div>
-                </div>
+                </section>
+                
+                <button className="btn-primary w-full py-4 text-xl">
+                    Guardar
+                </button>
             </div>
-            <button className="btn-primary w-full">Guardar</button>
             <Toaster
                     position="bottom-right"
                 />
