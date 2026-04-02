@@ -3,7 +3,6 @@
 import { ProductImage } from "@/components/product/product-image/ProductImage"
 import { Product } from "@/interfaces"
 import { currencyFormat } from "@/utils"
-import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 
@@ -16,9 +15,10 @@ export const ProductGridItem = ({product}:Props) => {
 
 
     const [displayImage, setDisplayImage] = useState(product.ProductImage?.[0]?.url)
+    const hasSecondaryImage = !!product.ProductImage?.[1]?.url
 
     const handleMouseEnter = () => {
-        if(product.ProductImage?.[1]){
+        if(hasSecondaryImage){
             setDisplayImage(product.ProductImage?.[1]?.url)
         }
     }
@@ -28,19 +28,23 @@ export const ProductGridItem = ({product}:Props) => {
     }
 
   return (
-    <div className="rounded-md overflow-hidden fade-in">
+    <div className="rounded-md overflow-hidden fade-in group">
         <Link href={`/product/${product.slug}`}>
-            <ProductImage 
-                src={displayImage}
-                alt={product.title}
-                className="w-full object-cover rounded max-h-[200px] md:max-h-[300px] lg:max-h-[400px]"
-                width={500}
-                height={500}
+            <div
+                className="w-full aspect-square sm:aspect-[4/5] lg:aspect-[15/16] overflow-hidden rounded bg-gray-100"
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-            />
+            >
+                <ProductImage 
+                    src={displayImage}
+                    alt={product.title}
+                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                    width={500}
+                    height={625}
+                />
+            </div>
         </Link>
-        <div className="md:p-4 flex flex-col">
+        <div className="pt-2 md:p-4 flex flex-col">
             <Link href={`/product/${product.slug}`} className="text-sm md:text-base hover:text-blue-600">
                 {product.title}
             </Link>
