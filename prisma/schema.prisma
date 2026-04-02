@@ -41,6 +41,10 @@ model Product {
   slug        String           @unique
   tags        String[]         @default([])
   diffPrice    Boolean            @default(false) // Diferencia de precio entre las variantes del producto
+  
+  imageGroupingAttributeId String?
+  imageGroupingAttribute   Attribute? @relation("ProductImageGroupingAttribute", fields: [imageGroupingAttributeId], references: [id], onDelete: SetNull)
+  
   ProductImage ProductImage[]
   variants    ProductVariant[]
   categories  ProductCategory[]
@@ -84,6 +88,9 @@ model Attribute {
   name  String
   values AttributeValue[]
   variants ProductVariantAttribute[]
+
+  imageGroupingProducts Product[] @relation("ProductImageGroupingAttribute")
+
 }
 
 model AttributeValue {

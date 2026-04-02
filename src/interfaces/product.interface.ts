@@ -1,6 +1,15 @@
 export interface ProductImage {
     id: string;
     url: string;
+    variants?: {
+        id: string;
+        attributes: {
+            attributeId: string;
+            value: {
+                value: string;
+            };
+        }[];
+    }[];
 }
 
 export interface AttributeValue {
@@ -47,6 +56,7 @@ export interface Product {
     variants?: ProductVariant[];
     categories?: CategorySimple[];
     isEnabled: boolean;
+    imageGroupingAttributeId?: string | null;
     // Puedes agregar categories si lo necesitas
 }
 

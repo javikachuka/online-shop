@@ -41,6 +41,7 @@ export const ProductForm = ({
     categories = [],
     attributes = [],
 }: Props) => {
+    console.log(product)
     const router = useRouter()
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
         []
@@ -64,7 +65,7 @@ export const ProductForm = ({
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
         // --- NUEVOS ESTADOS SENIOR ---
-    const [visualAttributeId, setVisualAttributeId] = useState<string | null>(null);
+    const [visualAttributeId, setVisualAttributeId] = useState<string | null>(product?.imageGroupingAttributeId || null);
     // Agrupamos las imágenes nuevas por el valor del atributo (ej: { "Negro": [File, File], "Plata": [File] })
     const [groupedNewImages, setGroupedNewImages] = useState<Record<string, File[]>>({});
 
@@ -142,6 +143,7 @@ export const ProductForm = ({
             setSelectedAttributeIds(firstVariantAttrs);
             setSelectedCategoryIds(categoriesSelected);
         }
+        setVisualAttributeId(product?.imageGroupingAttributeId || null);
     }, [product]);
 
     // Estado para atributos seleccionados
@@ -553,9 +555,12 @@ export const ProductForm = ({
 
         formData.append('visualAttributeId', visualAttributeId || "");
 
-        
+        console.log('FormData content:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}:`, value);
+        }
         // Enviar a server action o API
-        const {ok, product:updatedProduct, imageError} = await saveOrUpdateProduct(formData);
+        const {ok, product:updatedProduct} = await saveOrUpdateProduct(formData);
         // Manejar respuesta, mostrar notificación, etc.
         if(!ok){
             toast.error(`Error al guardar el producto`);
@@ -568,9 +573,6 @@ export const ProductForm = ({
             }
         }else{
             toast.success("Producto creado con éxito")
-        }
-        if(imageError !== null){
-            toast.error(imageError)
         }
         // Opcional: redirigir o limpiar formulario
 
@@ -613,20 +615,37 @@ export const ProductForm = ({
 
     // Esta función filtra las imágenes que ya pertenecen al producto según el grupo
     const getExistingImagesByGroup = (groupName: string) => {
-        if (!product.ProductImage) return [];
+        if (!product?.ProductImage) return [];
 
         // Si el grupo es "General", mostramos imágenes que NO tienen variantes asociadas
         if (groupName === "General") {
             return product.ProductImage.filter(img => !img.variants || img.variants.length === 0);
         }
 
+        if (!visualAttributeId) return [];
+
         // Si hay un atributo visual, filtramos imágenes cuya variante coincida con el nombre del grupo
         return product.ProductImage.filter(img => 
             img.variants?.some(v => 
-                v.attributes.some(attr => attr.value === groupName)
+                v.attributes.some(attr => attr.attributeId === visualAttributeId && attr.value.value === groupName)
             )
         );
     };
+
+    const getVisibleExistingImagesByGroup = (groupName: string) => {
+        return getExistingImagesByGroup(groupName).filter(img => !imagesToDelete.includes(img.id));
+    };
+
+    const variantGroups = Array.from(new Set(variants.map(v => 
+        v.attributes.find(a => a.attributeId === visualAttributeId)?.value || "General"
+    )));
+
+    const groupsToRender = visualAttributeId
+        ? Array.from(new Set([
+            ...variantGroups,
+            ...(getVisibleExistingImagesByGroup("General").length > 0 ? ["General"] : []),
+        ]))
+        : ["General"];
 
     return (
         <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 mb-16 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
@@ -851,7 +870,7 @@ export const ProductForm = ({
                             <select 
                             className="w-full p-2 border rounded-md bg-white text-sm"
                             value={visualAttributeId || ""}
-                            onChange={(e) => setVisualAttributeId(e.target.value)}
+                            onChange={(e) => setVisualAttributeId(e.target.value || null)}
                             >
                             <option value="">Ninguno (Fotos generales únicamente)</option>
                             {attributes
@@ -863,9 +882,7 @@ export const ProductForm = ({
 
                         {/* Zonas de carga dinámicas basadas en las variantes de la tabla */}
                         <div className="space-y-6">
-                            {Array.from(new Set(variants.map(v => 
-                                v.attributes.find(a => a.attributeId === visualAttributeId)?.value || "General"
-                            ))).map(groupName => (
+                            {groupsToRender.map(groupName => (
                             <div key={groupName} className="p-3 bg-white border rounded-md shadow-sm">
                                 <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm font-bold text-gray-700">Fotos: {groupName}</span>
@@ -882,62 +899,62 @@ export const ProductForm = ({
 
                                 {/* imagenes a mostar */}
                                 <div className="grid grid-cols-4 gap-2">
-                                
-                                {/* A. IMÁGENES QUE YA ESTÁN EN EL SERVIDOR */}
-                                {getExistingImagesByGroup(groupName).map((img) => (
-                                    <div key={img.id} className="relative aspect-square">
-                                    <img 
-                                        src={img.url} 
-                                        className="w-full h-full object-cover rounded-md border-2 border-blue-200" 
-                                        alt="server-image"
-                                    />
-                                    <button 
-                                        type="button"
-                                        // Función para agregar al array imagesToDelete
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
-                                    >
-                                        <IoCloseOutline size={12}/>
-                                    </button>
-                                    </div>
-                                ))}
+                                    
+                                    {/* A. IMÁGENES QUE YA ESTÁN EN EL SERVIDOR */}
+                                    {getVisibleExistingImagesByGroup(groupName).map((img) => (
+                                        <div key={img.id} className="relative aspect-square">
+                                        <img 
+                                            src={img.url} 
+                                            className="w-full h-full object-cover rounded-md border-2 border-blue-200" 
+                                            alt="server-image"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleRemoveImage(img.id)}
+                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
+                                        >
+                                            <IoCloseOutline size={12}/>
+                                        </button>
+                                        </div>
+                                    ))}
 
-                                {/* B. IMÁGENES NUEVAS (LOCALES) - Tu lógica actual */}
-                                {groupedNewImages[groupName]?.map((file, idx) => (
-                                    <div key={idx} className="relative aspect-square">
-                                    <img 
-                                        src={URL.createObjectURL(file)} 
-                                        className="w-full h-full object-cover rounded-md border-2 border-green-200" 
-                                        alt="preview"
-                                    />
-                                    <button 
-                                        type="button"
-                                        onClick={() => removeImageFromGroup(groupName, idx)}
-                                        className="absolute -top-1 -right-1 bg-gray-500 text-white rounded-full p-0.5"
-                                    >
-                                        <IoCloseOutline size={12}/>
-                                    </button>
-                                    </div>
-                                ))}
+                                    {/* B. IMÁGENES NUEVAS (LOCALES) - Tu lógica actual */}
+                                    {/* {groupedNewImages[groupName]?.map((file, idx) => (
+                                        <div key={idx} className="relative aspect-square">
+                                        <img 
+                                            src={URL.createObjectURL(file)} 
+                                            className="w-full h-full object-cover rounded-md border-2 border-green-200" 
+                                            alt="preview"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => removeImageFromGroup(groupName, idx)}
+                                            className="absolute -top-1 -right-1 bg-gray-500 text-white rounded-full p-0.5"
+                                        >
+                                            <IoCloseOutline size={12}/>
+                                        </button>
+                                        </div>
+                                    ))} */}
                                 </div>
 
                                 {/* Preview de imágenes del grupo */}
                                 <div className="grid grid-cols-4 gap-2">
-                                {groupedNewImages[groupName]?.map((file, idx) => (
-                                    <div key={idx} className="relative aspect-square">
-                                    <img 
-                                        src={URL.createObjectURL(file)} 
-                                        className="w-full h-full object-cover rounded-md border" 
-                                        alt="preview"
-                                    />
-                                    <button 
-                                        type="button"
-                                        onClick={() => removeImageFromGroup(groupName, idx)}
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
-                                    >
-                                        <IoCloseOutline size={12}/>
-                                    </button>
-                                    </div>
-                                ))}
+                                    {groupedNewImages[groupName]?.map((file, idx) => (
+                                        <div key={idx} className="relative aspect-square">
+                                        <img 
+                                            src={URL.createObjectURL(file)} 
+                                            className="w-full h-full object-cover rounded-md border" 
+                                            alt="preview"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => removeImageFromGroup(groupName, idx)}
+                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
+                                        >
+                                            <IoCloseOutline size={12}/>
+                                        </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                             ))}

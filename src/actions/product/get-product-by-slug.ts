@@ -11,7 +11,22 @@ export const getProductBySlug = async (slug: string) => {
                 ProductImage: {
                     select:{
                         id: true,
-                        url: true
+                        url: true,
+                        variants: {
+                            select: {
+                                id: true,
+                                attributes: {
+                                    select: {
+                                        attributeId: true,
+                                        value: {
+                                            select: {
+                                                value: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 variants: {

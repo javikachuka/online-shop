@@ -70,8 +70,10 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
     const tags = formData.get("tags") as string;
     const diffPrice = formData.get("diffPrice") === "true";
     const isEnabled = formData.get("isEnabled") === "true";
-    const visualAttributeId = formData.get("visualAttributeId") as string | null;
-    
+
+    const rawVisualAttributeId = formData.get("visualAttributeId") as string | null;
+    const visualAttributeId = rawVisualAttributeId && rawVisualAttributeId.trim() !== "" ? rawVisualAttributeId : null;
+
     const categories = formData.getAll("categories[]") as string[];
     const variants = JSON.parse(formData.get("variants") as string);
     const imagesToDelete = formData.getAll("imagesToDelete[]") as string[];
@@ -101,6 +103,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                     data: {
                         title, slug, description, diffPrice, isEnabled,
                         tags: tags.split(",").map(t => t.trim()),
+                        imageGroupingAttributeId: visualAttributeId
                     }
                 });
             } else {
@@ -109,6 +112,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                     data: {
                         title, slug, description, diffPrice, isEnabled,
                         tags: tags.split(",").map(t => t.trim()),
+                        imageGroupingAttributeId: visualAttributeId,
                         categories: {
                             create: categories.map(catId => ({ categoryId: catId }))
                         },
