@@ -98,6 +98,17 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
             if (id) {
                 // Lógica de Update (Simplificada para foco en imágenes)
                 await tx.productCategory.deleteMany({ where: { productId: id } });
+
+                if (categories.length > 0) {
+                    await tx.productCategory.createMany({
+                        data: categories.map((categoryId) => ({
+                            productId: id,
+                            categoryId,
+                        })),
+                        skipDuplicates: true,
+                    });
+                }
+
                 currentProduct = await tx.product.update({
                     where: { id },
                     data: {
@@ -106,6 +117,99 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                         imageGroupingAttributeId: visualAttributeId
                     }
                 });
+
+                const existingVariants = await tx.productVariant.findMany({
+                    where: { productId: id },
+                    select: { id: true }
+                });
+
+                const existingVariantIds = existingVariants.map((v) => v.id);
+                const incomingVariantIds = variants
+                    .map((v: any) => v.id)
+                    .filter((variantId: string | undefined) => !!variantId);
+
+                const variantsToDelete = existingVariantIds.filter(
+                    (variantId) => !incomingVariantIds.includes(variantId)
+                );
+
+                if (variantsToDelete.length > 0) {
+                    await tx.productVariantAttribute.deleteMany({
+                        where: { variantId: { in: variantsToDelete } }
+                    });
+
+                    await tx.productVariant.deleteMany({
+                        where: { id: { in: variantsToDelete } }
+                    });
+                }
+
+                for (const variant of variants) {
+                    const variantData = {
+                        price: Number(variant.price),
+                        stock: Number(variant.stock),
+                        sku: variant.sku || null,
+                        discountPercent: Number(variant.discountPercent || 0),
+                        order: Number(variant.order || 0),
+                    };
+
+                    if (variant.id && existingVariantIds.includes(variant.id)) {
+                        await tx.productVariant.update({
+                            where: { id: variant.id },
+                            data: variantData,
+                        });
+
+                        const incomingAttributes = (variant.attributes || []).map((attr: any) => ({
+                            attributeId: attr.attributeId,
+                            valueId: attr.valueId,
+                        }));
+
+                        const incomingAttributeIds = incomingAttributes.map((attr: any) => attr.attributeId);
+
+                        if (incomingAttributeIds.length > 0) {
+                            await tx.productVariantAttribute.deleteMany({
+                                where: {
+                                    variantId: variant.id,
+                                    attributeId: { notIn: incomingAttributeIds }
+                                }
+                            });
+                        } else {
+                            await tx.productVariantAttribute.deleteMany({
+                                where: { variantId: variant.id }
+                            });
+                        }
+
+                        for (const attr of incomingAttributes) {
+                            await tx.productVariantAttribute.upsert({
+                                where: {
+                                    attributeId_variantId: {
+                                        attributeId: attr.attributeId,
+                                        variantId: variant.id,
+                                    }
+                                },
+                                update: {
+                                    valueId: attr.valueId,
+                                },
+                                create: {
+                                    variantId: variant.id,
+                                    attributeId: attr.attributeId,
+                                    valueId: attr.valueId,
+                                }
+                            });
+                        }
+                    } else {
+                        await tx.productVariant.create({
+                            data: {
+                                ...variantData,
+                                productId: id,
+                                attributes: {
+                                    create: (variant.attributes || []).map((attr: any) => ({
+                                        attributeId: attr.attributeId,
+                                        valueId: attr.valueId
+                                    }))
+                                }
+                            }
+                        });
+                    }
+                }
             } else {
                 // Crear Producto
                 currentProduct = await tx.product.create({
@@ -122,6 +226,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                                 stock: Number(v.stock),
                                 sku: v.sku,
                                 discountPercent: Number(v.discountPercent || 0),
+                                order: Number(v.order || 0),
                                 attributes: {
                                     create: v.attributes.map((attr: any) => ({
                                         attributeId: attr.attributeId,
