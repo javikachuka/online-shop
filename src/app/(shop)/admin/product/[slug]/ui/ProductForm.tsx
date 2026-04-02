@@ -555,10 +555,6 @@ export const ProductForm = ({
 
         formData.append('visualAttributeId', visualAttributeId || "");
 
-        console.log('FormData content:');
-        for (let [key, value] of formData.entries()) {
-            console.log(`${key}:`, value);
-        }
         // Enviar a server action o API
         const {ok, product:updatedProduct} = await saveOrUpdateProduct(formData);
         // Manejar respuesta, mostrar notificación, etc.
