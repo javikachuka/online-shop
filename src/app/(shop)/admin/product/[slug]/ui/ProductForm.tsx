@@ -41,6 +41,9 @@ export const ProductForm = ({
     categories = [],
     attributes = [],
 }: Props) => {
+    const MAX_IMAGE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
     console.log(product)
     const router = useRouter()
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
@@ -173,7 +176,28 @@ export const ProductForm = ({
     // Actualizar imágenes nuevas
     const handleNewImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setNewImages(Array.from(e.target.files));
+            const incomingFiles = Array.from(e.target.files);
+            const validFiles = incomingFiles.filter((file) => {
+                if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                    toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`);
+                    return false;
+                }
+
+                if (file.size > MAX_IMAGE_SIZE_BYTES) {
+                    toast.error(`La imagen ${file.name} supera 1MB.`);
+                    return false;
+                }
+
+                return true;
+            });
+
+            setNewImages(validFiles);
+
+            if (fileInputRef.current) {
+                const dt = new DataTransfer();
+                validFiles.forEach(file => dt.items.add(file));
+                fileInputRef.current.files = dt.files;
+            }
         }
     };
 
@@ -198,7 +222,22 @@ export const ProductForm = ({
         // Manejador para cuando cambian las imágenes de un grupo específico
     const handleGroupedImagesChange = (groupValue: string, files: FileList | null) => {
         if (!files) return;
-        const fileArray = Array.from(files);
+        const fileArray = Array.from(files).filter((file) => {
+            if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`);
+                return false;
+            }
+
+            if (file.size > MAX_IMAGE_SIZE_BYTES) {
+                toast.error(`La imagen ${file.name} supera 1MB.`);
+                return false;
+            }
+
+            return true;
+        });
+
+        if (fileArray.length === 0) return;
+
         setGroupedNewImages(prev => ({
             ...prev,
             [groupValue]: [...(prev[groupValue] || []), ...fileArray]
@@ -556,10 +595,10 @@ export const ProductForm = ({
         formData.append('visualAttributeId', visualAttributeId || "");
 
         // Enviar a server action o API
-        const {ok, product:updatedProduct} = await saveOrUpdateProduct(formData);
+        const {ok, product:updatedProduct, error} = await saveOrUpdateProduct(formData);
         // Manejar respuesta, mostrar notificación, etc.
         if(!ok){
-            toast.error(`Error al guardar el producto`);
+            toast.error(error || `Error al guardar el producto`);
             return;
         }
         if(product?.id){

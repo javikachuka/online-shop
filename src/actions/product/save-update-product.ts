@@ -9,6 +9,9 @@ import {z} from 'zod'
 import { v2 as cloudinary } from 'cloudinary'
 cloudinary.config(process.env.CLOUDINARY_URL || "");
 
+const MAX_IMAGE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 // Utilidad para guardar imagen en disco
 async function saveImage(file: File): Promise<string> {
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -89,6 +92,26 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
             imageGroups[groupName].push(value);
         }
     });
+
+    const allIncomingImages = Array.from(formData.entries())
+        .filter(([key, value]) => (key.startsWith("images_") || key === 'newImages') && value instanceof File)
+        .map(([, value]) => value as File);
+
+    for (const file of allIncomingImages) {
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            return {
+                ok: false,
+                error: `Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`
+            }
+        }
+
+        if (file.size > MAX_IMAGE_SIZE_BYTES) {
+            return {
+                ok: false,
+                error: `La imagen ${file.name} supera el máximo de 1MB.`
+            }
+        }
+    }
 
     try {
         const product = await prisma.$transaction(async (tx) => {
@@ -248,8 +271,13 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                 const uploadPromises = files.map(async (file) => {
                     const buffer = await file.arrayBuffer();
                     const base64Image = Buffer.from(buffer).toString('base64');
-                    return cloudinary.uploader.upload(`data:image/png;base64,${base64Image}`, {
-                        folder: 'tu_carpeta_productos'
+                    return cloudinary.uploader.upload(`data:${file.type};base64,${base64Image}`, {
+                        folder: 'tu_carpeta_productos',
+                        resource_type: 'image',
+                        transformation: [
+                            { fetch_format: 'auto', quality: 'auto' },
+                            { width: 2000, crop: 'limit' }
+                        ]
                     });
                 });
                 
