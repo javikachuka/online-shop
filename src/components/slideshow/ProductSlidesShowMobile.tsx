@@ -45,6 +45,7 @@ export const ProductSlidesShowMobile = ({ images, title, className }: Props) => 
                             height={500}
                             src={image.url}
                             alt={title}
+                            className="object-cover"
                         />
                     </SwiperSlide>
                 ))}

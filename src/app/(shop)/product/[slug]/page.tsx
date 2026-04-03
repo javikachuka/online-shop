@@ -1,7 +1,6 @@
 export const revalidate = 604800 // son 7 dias
 
-import { FilterAttributes, SlideShowSwitcher } from "@/components";
-import { titleFont } from "@/config/fonts";
+import { ProductDetailContent } from "@/components/product/ProductDetailContent";
 import { getProductBySlug } from "@/actions";
 import { notFound } from "next/navigation";
 import { Metadata, ResolvingMetadata } from "next";
@@ -70,33 +69,6 @@ export default async function ProductPage({params} : Props) {
   const filters = getAvailableFilters(product.variants || []);  
 
   return (
-    <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3">
-      {/* Slide show */}
-      <div className="col-span-1 md:col-span-2 ">
-        <SlideShowSwitcher
-          title={product.title}
-          images={product.ProductImage}
-        />
-      </div>
-
-      {/* details */}
-      <div className="col-span-1 px-5 ">
-        {/* <StockLabel slug={product.slug}/> */}
-        <h1 className={`${titleFont.className} antialiased font-bold text-xl`}>
-          {product.title}
-        </h1>
-
-
-        {/* Filtros dinámicos de atributos */}
-        <FilterAttributes product={product} filters={filters}/>
-
-        {/* description */} 
-        <h3 className="font-bold text-sm">
-          Descripcion
-        </h3>
-        <p className="font-light">{product.description}</p>
-      </div>
-
-    </div>
+    <ProductDetailContent product={product} filters={filters} />
   );
 }

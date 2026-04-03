@@ -10,10 +10,11 @@ import { Toaster, toast } from 'sonner'
 interface Props {
     product: Product;
     filters: { [attrName: string]: string[] };
+    onVariantChange?: (variant: ProductVariant | null) => void;
 }
 
 
-export const FilterAttributes = ({ product, filters }: Props) => {
+export const FilterAttributes = ({ product, filters, onVariantChange }: Props) => {
     const variants = useMemo(() => product.variants || [], [product.variants]);
     
     // Selecciona la primera opción de cada filtro al montar el componente, solo si la variante resultante tiene stock > 0
@@ -76,13 +77,15 @@ export const FilterAttributes = ({ product, filters }: Props) => {
         if (matchedVariant) {
             setPriceToShow(matchedVariant.price);
             setSelectedVariantData(matchedVariant);
+            onVariantChange?.(matchedVariant);
         } else {
             setPriceToShow(null);
             setSelectedVariantData(null);
+            onVariantChange?.(null);
         }
         
         setQuantity(1);
-    }, [selectedAttributes, filters, variants]);
+    }, [selectedAttributes, filters, variants, onVariantChange]);
 
     //manejar el cambio de cantidad segun stock
     const handleQuantityChange = async (value: number) => {
