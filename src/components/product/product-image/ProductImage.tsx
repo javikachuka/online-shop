@@ -6,6 +6,8 @@ interface Props {
     className?: React.HTMLAttributes<HTMLImageElement>['className'];
     width?: number;
     height?: number;
+    fill?: boolean;
+    sizes?: string;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
 }
@@ -16,6 +18,8 @@ export const ProductImage = ({
     className,
     width,
     height,
+    fill = false,
+    sizes,
     onMouseEnter,
     onMouseLeave
 }: Props) => {
@@ -25,6 +29,20 @@ export const ProductImage = ({
             ? src 
             : `/products/${src}`
         : '/imgs/no-image.jpg';
+
+    if (fill) {
+        return (
+            <Image 
+                src={finalSrc} 
+                alt={alt} 
+                className={className}
+                fill
+                sizes={sizes}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+            />
+        )
+    }
 
     return (
         <Image 

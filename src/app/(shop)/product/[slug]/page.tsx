@@ -1,6 +1,6 @@
 export const revalidate = 604800 // son 7 dias
 
-import { FilterAttributes, ProductSlidesShow, ProductSlidesShowMobile } from "@/components";
+import { FilterAttributes, SlideShowSwitcher } from "@/components";
 import { titleFont } from "@/config/fonts";
 import { getProductBySlug } from "@/actions";
 import { notFound } from "next/navigation";
@@ -73,18 +73,9 @@ export default async function ProductPage({params} : Props) {
     <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3">
       {/* Slide show */}
       <div className="col-span-1 md:col-span-2 ">
-        {/* Mobile */}
-        <ProductSlidesShowMobile
+        <SlideShowSwitcher
           title={product.title}
           images={product.ProductImage}
-          className="block md:hidden"
-        />
-
-        {/* Desktop */}
-        <ProductSlidesShow 
-          title={product.title}
-          images={product.ProductImage}
-          className="hidden md:block"
         />
       </div>
 

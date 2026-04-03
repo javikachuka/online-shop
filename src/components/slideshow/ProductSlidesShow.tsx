@@ -52,29 +52,32 @@ export const ProductSlidesShow = ({ images, title, className }: Props) => {
                             height={600}
                             src={image.url}
                             alt={title}
-                            className="rounded-lg"
+                            className="object-cover rounded-lg"
                         />
                     </SwiperSlide>
                 ))}
             </Swiper>
             <Swiper
                 onSwiper={setThumbsSwiper}
-                spaceBetween={10}
+                spaceBetween={8}
                 slidesPerView={4}
                 freeMode={true}
                 watchSlidesProgress={true}
                 modules={[FreeMode, Navigation, Thumbs]}
-                className="mySwiper"
+                className="mySwiper w-full"
             >
                 {images.map((image) => (
-                    <SwiperSlide key={image.id}>
-                        <ProductImageCmp
-                            width={300}
-                            height={300}
-                            src={image.url}
-                            alt={title}
-                            className="rounded-lg"
-                        />
+                    <SwiperSlide key={image.id} className="cursor-pointer">
+                        {/* Contenedor con aspecto fijo */}
+                        <div className="relative w-full aspect-square overflow-hidden rounded-lg bg-gray-100">
+                            <ProductImageCmp
+                                fill
+                                sizes="25vw"
+                                src={image.url}
+                                alt={title}
+                                className="object-cover opacity-70 hover:opacity-100 transition-opacity duration-200"
+                            />
+                        </div>
                     </SwiperSlide>
                 ))}
             </Swiper>

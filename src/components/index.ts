@@ -14,6 +14,7 @@ export * from './product/product-image/ProductImage'
 
 export * from './slideshow/ProductSlidesShow'
 export * from './slideshow/ProductSlidesShowMobile'
+export * from './slideshow/SlideShowSwitcher'
 
 export * from './ui/top-menu/TopMenu'
 export * from './ui/shipping/ShippingComponents'
