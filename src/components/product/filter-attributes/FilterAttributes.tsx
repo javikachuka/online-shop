@@ -16,6 +16,41 @@ interface Props {
 
 export const FilterAttributes = ({ product, filters, onVariantChange }: Props) => {
     const variants = useMemo(() => product.variants || [], [product.variants]);
+
+    const getCartImageForVariant = (variant: ProductVariant) => {
+        const images = product.ProductImage || [];
+        if (images.length === 0) return "";
+
+        if (!product.imageGroupingAttributeId) {
+            return images[0]?.url || "";
+        }
+
+        const byVariantId = images.find((image) =>
+            image.variants?.some((imageVariant) => imageVariant.id === variant.id)
+        );
+        if (byVariantId?.url) return byVariantId.url;
+
+        const visualValue = variant.attributes.find(
+            (attr) => attr.attributeId === product.imageGroupingAttributeId
+        )?.value?.value;
+
+        if (visualValue) {
+            const byVisualAttribute = images.find((image) =>
+                image.variants?.some((imageVariant) =>
+                    imageVariant.attributes?.some(
+                        (attr) =>
+                            attr.attributeId === product.imageGroupingAttributeId &&
+                            attr.value?.value === visualValue
+                    )
+                )
+            );
+
+            if (byVisualAttribute?.url) return byVisualAttribute.url;
+        }
+
+        const generalImage = images.find((image) => !image.variants || image.variants.length === 0);
+        return generalImage?.url || images[0]?.url || "";
+    };
     
     // Selecciona la primera opción de cada filtro al montar el componente, solo si la variante resultante tiene stock > 0
     const getDefaultSelectedAttributes = () => {
@@ -223,7 +258,7 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
                 title: product.title,
                 slug: product.slug,
                 quantity: quantity,
-                image: product.ProductImage?.[0]?.url || "",
+                image: getCartImageForVariant(matchedVariant),
                 attributes: matchedVariant.attributes,
                 discountPercent: matchedVariant.discountPercent || 0
             };
