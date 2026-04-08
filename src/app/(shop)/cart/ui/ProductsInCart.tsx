@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { ProductImage, QuantitySelector } from "@/components";
 import { useCartStore } from "@/store";
-import Image from "next/image";
 import Link from "next/link";
 import { getNameAttributes } from "@/utils";
 import { currencyFormat } from '../../../../utils/currencyFormat';
@@ -111,10 +110,10 @@ export const ProductsInCart = () => {
                 >
                     <ProductImage
                         src={product.image}
-                        height={50}
+                        height={100}
                         width={100}
                         alt={product.title}
-                        className="mr-5 rounded self-start"
+                        className="mr-5 rounded self-start w-[100px] h-[100px] object-cover object-center flex-shrink-0"
                     />
                     <div>
                         <Link

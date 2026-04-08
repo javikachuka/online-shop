@@ -44,10 +44,10 @@ const LoginForm = () => {
 
             <LoginButton />
 
-            {state === "CredentialsSignin" && (
-                <div className="flex h-8 items-end space-x-1 mb-5">
+            {state === "error" && (
+                <div className="flex h-8 items-end space-x-1 mb-5 mt-4">
                     <IoInformationOutline className="h-5 w-5 text-red-500" />
-                    <p className="text-sm text-red-500">Las credenciales no son correctas</p>
+                    <p className="text-sm text-red-500">El usuario o la contraseña son incorrectos</p>
                 </div>
             )}
 

@@ -30,7 +30,7 @@ export const ProductsInCart = () => {
                         height={100}
                         width={100}
                         alt={product.title}
-                        className="mr-5 rounded self-start"
+                        className="mr-5 rounded self-start w-[100px] h-[100px] object-cover object-center flex-shrink-0"
                     />
                     <div>
                         <span

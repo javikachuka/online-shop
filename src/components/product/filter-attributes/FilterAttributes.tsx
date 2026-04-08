@@ -123,35 +123,19 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
     }, [selectedAttributes, filters, variants, onVariantChange]);
 
     //manejar el cambio de cantidad segun stock
-    const handleQuantityChange = async (value: number) => {
-        
+    const handleQuantityChange = (value: number) => {
         if(selectedVariantData === null) {
             toast.error("Debe seleccionar una combinación válida antes de cambiar la cantidad.");
             return;
         }
         const variantInCart = isInCart(selectedVariantData.id);
-        if(variantInCart && value + variantInCart.quantity > selectedVariantData.stock){
-            toast.error(`No hay suficiente stock para ${product.title} con esta combinación.`);
+        const quantityInCart = variantInCart ? variantInCart.quantity : 0;
+        
+        if(value + quantityInCart > selectedVariantData.stock){
+            toast.error(`Stock máximo disponible: ${selectedVariantData.stock - quantityInCart} unidades.`);
             return;
         }
-        // Llama a tu action o endpoint
-        const res = await fetch('/api/stock-by-variant', {
-            method: 'POST',
-            body: JSON.stringify({ variantIds: [selectedVariantData?.id] }),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await res.json(); 
-        const variant = data.find((v: { id: string | number; stock: number }) => v.id === selectedVariantData?.id);
-        if (!variant) {
-            toast.error(`No se encontró la variante para ${product.title}.`);
-            return;
-        }
-        if ( value > variant.stock) {
-            toast.error(`No hay suficiente stock para ${product.title} con esta combinación.`);
-            return;
-        }else {
-            setQuantity(value);
-        }
+        setQuantity(value);
     }
 
     // Filtra variantes según la selección actual
@@ -195,7 +179,7 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         });
     };
 
-    const addToCart = async () => { // ← Hacer async
+    const addToCart = () => {
         if (Object.entries(selectedAttributes).length === 0) {
             setErrorSelection(true);
             return;
@@ -211,71 +195,39 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
             setErrorSelection(true);
             return;
         }
-        setAddedToCart(true);
         
-        // Buscar la variante que coincida con la selección
         const matchedVariant = findMatchedVariant();
         if (!matchedVariant) return;
 
-        // 🔧 VALIDAR STOCK REAL (considerando reservas)
-        try {
-            const res = await fetch('/api/stock-by-variant', {
-                method: 'POST',
-                body: JSON.stringify({ variantIds: [matchedVariant.id] }),
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (!res.ok) {
-                throw new Error('Error al verificar stock');
-            }
-            
-            const stockData = await res.json();
-            const variantStock = stockData.find((v: { id: string; stock: number }) => v.id === matchedVariant.id);
-            
-            if (!variantStock) {
-                toast.error('Error al verificar disponibilidad del producto');
-                setAddedToCart(false);
-                setErrorSelection(false);
-                return;
-            }
+        // Validar contra stock local (el checkout validará con la BD en tiempo real)
+        const variantInCart = isInCart(matchedVariant.id);
+        const quantityInCart = variantInCart ? variantInCart.quantity : 0;
 
-            // Verificar stock disponible vs cantidad en carrito + nueva cantidad
-            const variantInCart = isInCart(matchedVariant.id);
-            const quantityInCart = variantInCart ? variantInCart.quantity : 0;
-            const totalQuantity = quantityInCart + quantity;
-            
-            if (totalQuantity > variantStock.stock) {
-                toast.error(`Stock insuficiente.`);
-                setAddedToCart(false);
-                setErrorSelection(false);
-                return;
-            }
-
-            // ✅ Stock OK - Proceder a agregar al carrito
-            const cartProduct: CartProduct = {
-                variantId: matchedVariant.id,
-                price: matchedVariant.price,
-                title: product.title,
-                slug: product.slug,
-                quantity: quantity,
-                image: getCartImageForVariant(matchedVariant),
-                attributes: matchedVariant.attributes,
-                discountPercent: matchedVariant.discountPercent || 0
-            };
-
-            addProductToCart(cartProduct);
-            setErrorSelection(false);
-            setQuantity(1);
-            setTimeout(() => {
-                toast.success("Producto agregado al carrito")
-                setAddedToCart(false);
-            }, 500);
-
-        } catch (error) {
-            toast.error('Error al verificar stock disponible');
-            setAddedToCart(false);
-            setErrorSelection(false);
+        if (quantity + quantityInCart > matchedVariant.stock) {
+            toast.error(`Stock insuficiente. Disponible: ${matchedVariant.stock - quantityInCart} unidades.`);
+            return;
         }
+
+        setAddedToCart(true);
+
+        const cartProduct: CartProduct = {
+            variantId: matchedVariant.id,
+            price: matchedVariant.price,
+            title: product.title,
+            slug: product.slug,
+            quantity: quantity,
+            image: getCartImageForVariant(matchedVariant),
+            attributes: matchedVariant.attributes,
+            discountPercent: matchedVariant.discountPercent || 0
+        };
+
+        addProductToCart(cartProduct);
+        setErrorSelection(false);
+        setQuantity(1);
+        setTimeout(() => {
+            toast.success("Producto agregado al carrito");
+            setAddedToCart(false);
+        }, 500);
     };
 
     const findMatchedVariant = () => {

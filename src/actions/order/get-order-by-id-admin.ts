@@ -42,8 +42,25 @@ export const getOrderByIdAdmin = async (id: string) => {
                             id: true,
                             title: true,
                             slug: true,
+                            imageGroupingAttributeId: true,
                             ProductImage: {
-                                take: 1
+                                select: {
+                                    id: true,
+                                    url: true,
+                                    variants: {
+                                        select: {
+                                            id: true,
+                                            attributes: {
+                                                select: {
+                                                    attributeId: true,
+                                                    value: {
+                                                        select: { value: true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     },

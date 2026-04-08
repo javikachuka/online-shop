@@ -1,7 +1,7 @@
 import { getDefaultCompany, getOrderById } from "@/actions";
 import { OrderStatus, ProductImage, Title } from "@/components";
 import { currencyFormat, getNameAttributes } from "@/utils";
-import { getOrderProductTitles } from "@/utils/order-utils";
+import { getOrderProductTitles, getOrderItemImage } from "@/utils/order-utils";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { IoBanOutline, IoWalletOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
@@ -101,13 +101,17 @@ export default async function CategoryPage({ params }: Props) {
 
                         {/* Items */}
                         {orderItems.map((item) => (
-                            <div key={item.product.slug} className="flex mb-5">
+                            <div key={`${item.product.slug}-${item.variant.id}`} className="flex mb-5">
                                 <ProductImage
-                                    src={item.product.ProductImage[0]?.url}
+                                    src={getOrderItemImage(
+                                        item.product.ProductImage,
+                                        item.variant,
+                                        item.product.imageGroupingAttributeId
+                                    )}
                                     height={100}
                                     width={100}
                                     alt={item.product.title}
-                                    className="mr-5 rounded"
+                                    className="mr-5 rounded self-start w-[100px] h-[100px] object-cover object-center flex-shrink-0"
                                 />
                                 <div>
                                     <p>{item.product.title} - {getNameAttributes(item.variant.attributes)}</p>

@@ -19,13 +19,7 @@ export async function authenticate(
     console.log(error);
     
     if (error instanceof AuthError) {
-        console.log(error);
-        
-      // Verificar si es un error de credenciales basado en el mensaje
-      if (error.message?.includes('CredentialsSignin')) {
-        return 'CredentialsSignin';
-      }
-      return 'Something went wrong.';
+      return 'error';
     }
     throw error;
   }

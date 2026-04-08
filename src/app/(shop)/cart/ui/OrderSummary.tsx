@@ -14,7 +14,7 @@ export const OrderSummary = () => {
         setLoaded(true)
     },[])
 
-    if(!loaded) return <p>loading...</p>
+    if(!loaded) return <p>Cargando...</p>
 
     return (
         <div className="grid grid-cols-2">
