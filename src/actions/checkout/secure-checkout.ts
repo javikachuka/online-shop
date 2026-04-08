@@ -183,11 +183,23 @@ export const createSecureCheckout = async (
 
             // 2.5 Calcular costo de envío
             const { calculateShippingCost } = await import('@/actions/shipping/calculate-shipping');
-            const shippingCalculation = calculateShippingCost(address, subTotal, totalDiscounts);
+            const shippingCalculation = await calculateShippingCost(address, subTotal, totalDiscounts);
+
+            const shippingCost = Number(shippingCalculation?.cost ?? 0);
+            const shippingMethod = shippingCalculation?.method ?? 'standard';
+            const freeShipping = Boolean(shippingCalculation?.isFree);
+
+            if (!Number.isFinite(shippingCost)) {
+                throw new Error('No se pudo calcular el costo de envío');
+            }
 
             // 2.6 Calcular total (sin impuestos porque ya están incluidos en el precio)
             const tax = 0; // Los precios ya incluyen impuestos
-            const total = subTotal - totalDiscounts + shippingCalculation.cost + tax;
+            const total = subTotal - totalDiscounts + shippingCost + tax;
+
+            if (!Number.isFinite(total)) {
+                throw new Error('No se pudo calcular el total del checkout');
+            }
 
             // 2.6 Usar el método de pago ya obtenido anteriormente
             // (el paymentMethod ya fue obtenido para calcular descuentos)
@@ -217,17 +229,23 @@ export const createSecureCheckout = async (
             const orderSession = await tx.orderSession.create({
                 data: {
                     sessionToken,
-                    userId,
-                    companyId: company.id,
-                    paymentMethodId: paymentMethod.id,
+                    user: {
+                        connect: { id: userId }
+                    },
+                    company: {
+                        connect: { id: company.id }
+                    },
+                    paymentMethod: {
+                        connect: { id: paymentMethod.id }
+                    },
                     subTotal,
                     tax,
                     total,
                     discounts: totalDiscounts,
                     deliveryMethod: address.deliveryMethod || 'delivery',
-                    shippingCost: shippingCalculation.cost,
-                    shippingMethod: shippingCalculation.method,
-                    freeShipping: shippingCalculation.isFree,
+                    shippingCost,
+                    shippingMethod,
+                    freeShipping,
                     address: JSON.stringify({
                         firstName: address.firstName,
                         lastName: address.lastName,
@@ -256,11 +274,11 @@ export const createSecureCheckout = async (
             console.log('✅ OrderSession creada con token:', sessionToken);
 
             // 2.9 Crear reservas de stock temporal asociadas a la OrderSession
-            const stockReservationId = `session-${sessionToken}`;
+            const stockReservationBaseId = `session-${sessionToken}`;
             for (const item of items) {
                 await tx.stockReservation.create({
                     data: {
-                        reservationId: stockReservationId,
+                        reservationId: `${stockReservationBaseId}-${item.variantId}`,
                         variantId: item.variantId,
                         quantity: item.quantity,
                         userId,
@@ -344,9 +362,18 @@ export const createSecureCheckout = async (
 
     } catch (error: any) {
         console.error('❌ Error en checkout seguro:', error);
+
+        const rawMessage = error instanceof Error ? error.message : '';
+        const isInternalError =
+            rawMessage.includes('Invalid `prisma.') ||
+            rawMessage.includes('PrismaClient') ||
+            rawMessage.includes('Argument `');
+
         return {
             ok: false,
-            error: error.message || 'Error interno al procesar el checkout'
+            error: isInternalError
+                ? 'No pudimos iniciar el pago en este momento. Intentá nuevamente.'
+                : rawMessage || 'Error interno al procesar el checkout'
         };
     }
 };

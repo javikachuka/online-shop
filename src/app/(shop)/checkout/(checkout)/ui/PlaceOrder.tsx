@@ -160,16 +160,17 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
                     }
                     {
                         paymentsMethods.map(pm => (
-                            <div className="inline-flex items-center" key={pm.id}>
-                                <label className="relative flex cursor-pointer items-center rounded-full p-3">
+                            <div className="flex items-center" key={pm.id}>
+                                <label className="flex cursor-pointer items-center gap-2 py-2 px-1">
                                     <input
                                         type="radio"
                                         name="paymentMethod"
-                                        className="border-gray-500 peer h-5 w-5 cursor-pointer appearance-none rounded-full border border-blue-gray-200 checked:border-blue-500 checked:bg-blue-500"
+                                        className="peer sr-only"
                                         checked={selectedPayment?.id === pm.id}
                                         onChange={() => setSelectedPayment(pm)}
                                     />
-                                    <span className="ml-1">{pm.name}</span>
+                                    <span className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 bg-white peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:shadow-[inset_0_0_0_3px_white] transition-all duration-150" />
+                                    <span className="text-sm select-none">{pm.name}</span>
                                 </label>
                             </div>
                         ))
