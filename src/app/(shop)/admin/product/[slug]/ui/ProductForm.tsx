@@ -9,7 +9,6 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { CategoryCheckboxTree } from "./CategoryCheckboxTree";
 import { useForm } from "react-hook-form";
-import { ProductImage as ProductImageCmp } from "@/components";
 import { IoCloseOutline } from "react-icons/io5";
 import { saveOrUpdateProduct } from "@/actions";
 import { Toaster, toast } from 'sonner';
@@ -41,8 +40,8 @@ export const ProductForm = ({
     categories = [],
     attributes = [],
 }: Props) => {
-    const MAX_IMAGE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
-    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+    const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 
     console.log(product)
     const router = useRouter()
@@ -179,12 +178,12 @@ export const ProductForm = ({
             const incomingFiles = Array.from(e.target.files);
             const validFiles = incomingFiles.filter((file) => {
                 if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-                    toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`);
+                    toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG, WEBP o AVIF.`);
                     return false;
                 }
 
                 if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                    toast.error(`La imagen ${file.name} supera 1MB.`);
+                    toast.error(`La imagen ${file.name} supera 2MB.`);
                     return false;
                 }
 
@@ -224,12 +223,12 @@ export const ProductForm = ({
         if (!files) return;
         const fileArray = Array.from(files).filter((file) => {
             if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-                toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`);
+                toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG, WEBP o AVIF.`);
                 return false;
             }
 
             if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                toast.error(`La imagen ${file.name} supera 1MB.`);
+                toast.error(`La imagen ${file.name} supera 2MB.`);
                 return false;
             }
 

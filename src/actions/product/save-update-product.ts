@@ -1,50 +1,13 @@
 'use server'
 
 import {prisma} from "@/lib/prisma";
-import path from "path";
-import fs from "fs/promises";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth.config";
-import {z} from 'zod'
 import { v2 as cloudinary } from 'cloudinary'
 cloudinary.config(process.env.CLOUDINARY_URL || "");
 
-const MAX_IMAGE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
-// Utilidad para guardar imagen en disco
-async function saveImage(file: File): Promise<string> {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = `${Date.now()}-${file.name}`;
-    const filepath = path.join(process.cwd(), "public/imgs/products", filename);
-    await fs.writeFile(filepath, buffer as unknown as Uint8Array);
-    return `/imgs/products/${filename}`;
-}
-
-const uploadImages = async (files: File[]) => {
-    try {
-        const uploadPromises = files.map( async (file) => {
-            try {
-                const buffer = await file.arrayBuffer();
-                const base64Image = Buffer.from(buffer).toString('base64');
-                return cloudinary.uploader.upload(`data:${file.type};base64,${base64Image}`, {
-                    folder: 'images/ava_indumentaria'
-                }).then(r => r.secure_url);
-            } catch (error) {
-                console.log(error);
-                return null;
-            }
-        });
-        const uploadResults = await Promise.all(uploadPromises);
-        return uploadResults;
-        
-    } catch (error) {
-
-        console.log(error);
-        return null
-        
-    }
-}
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
     
 
 export const saveOrUpdateProduct = async (formData: FormData) => {
@@ -101,14 +64,14 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
         if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
             return {
                 ok: false,
-                error: `Formato no permitido: ${file.name}. Usa JPG, PNG o WEBP.`
+                error: `Formato no permitido: ${file.name}. Usa JPG, PNG, WEBP o AVIF.`
             }
         }
 
         if (file.size > MAX_IMAGE_SIZE_BYTES) {
             return {
                 ok: false,
-                error: `La imagen ${file.name} supera el máximo de 1MB.`
+                error: `La imagen ${file.name} supera el máximo de 2MB.`
             }
         }
     }
