@@ -12,7 +12,8 @@ import {
     IoTicketOutline,
     IoColorPaletteOutline,
     IoPricetagOutline,
-    IoBusinessOutline
+    IoBusinessOutline,
+    IoCardOutline
 } from "react-icons/io5";
 import { useUIStore } from "@/store";
 import { signOut, useSession } from "next-auth/react";
@@ -186,6 +187,14 @@ export const Sidebar = ({categories = []}: Props) => {
                             >
                                 <IoBusinessOutline size={30} />
                                 <span className="ml-3 text-xl">Empresa</span>
+                            </Link>
+                            <Link
+                                href={"/admin/payment-methods"}
+                                onClick={() => closeMenu()}
+                                className="flex items-center mt-10 p-2 hover:bg-gray-100 rounded transition-all"
+                            >
+                                <IoCardOutline size={30} />
+                                <span className="ml-3 text-xl">Métodos de pago</span>
                             </Link>
                         </>
                     )

@@ -29,6 +29,7 @@ export * from './payments/paypal-check-payment'
 export * from './payments/mercadopago-payment'
 
 export * from './payments-methods/get-payments-methods'
+export * from './payments-methods/admin-payment-methods'
 
 export * from './user/get-paginated-users'
 
