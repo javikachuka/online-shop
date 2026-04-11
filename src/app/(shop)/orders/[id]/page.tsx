@@ -194,10 +194,10 @@ export default async function CategoryPage({ params }: Props) {
                             </span>
 
                             {
-                                orderData.order?.discounts && orderData.order?.discounts > 0 && (
+                                (orderData.order?.discounts ?? 0) > 0 && (
                                     <>
                                         <span>Descuentos</span>
-                                        <span className="text-right">-{currencyFormat(orderData.order?.discounts)}</span>
+                                        <span className="text-right">-{currencyFormat(orderData.order?.discounts ?? 0)}</span>
                                     </>
                                 )
                             }
