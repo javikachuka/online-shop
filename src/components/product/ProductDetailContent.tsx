@@ -14,7 +14,7 @@ export const ProductDetailContent = ({ product, filters }: Props) => {
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
     return (
-        <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto">
             <div className="col-span-1 md:col-span-2 ">
                 <SlideShowSwitcher
                     title={product.title}
