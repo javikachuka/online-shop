@@ -469,6 +469,12 @@ export const createSecureCheckout = async (
                 failure: `${baseUrl}/orders/payment-failure`,
                 pending: `${baseUrl}/orders/payment-pending`
             },
+            payment_methods: {
+                excluded_payment_types: [
+                    { id: 'ticket' },
+                    { id: 'atm' }
+                ]
+            },
             auto_return: "approved",
             expires: true,
             expiration_date_from: new Date().toISOString(),

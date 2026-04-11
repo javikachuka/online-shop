@@ -29,7 +29,6 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
         const result = await processApprovedPayment(paymentId);
         
         if (!result.ok) {
-          console.error('❌ Error procesando pago:', result.error);
           setError(result.message || result.error || 'Error al procesar el pago');
           setOrderStatus('error');
           return;
@@ -96,8 +95,7 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
             break;
         }
 
-      } catch (error: any) {
-        console.error('❌ Error en processPayment:', error);
+      } catch {
         setError('Error interno al procesar el pago');
         setOrderStatus('error');
       }

@@ -42,6 +42,12 @@ export const createMercadoPagoPreference = async (orderId: string, amount: numbe
                 failure: `${baseUrl}/checkout?error=payment_failed`,
                 pending: `${baseUrl}/orders/payment-pending`
             },
+            payment_methods: {
+                excluded_payment_types: [
+                    { id: 'ticket' },
+                    { id: 'atm' }
+                ]
+            },
             auto_return: "approved",
             // notification_url: `${baseUrl}/api/mercadopago-webhook`
         };

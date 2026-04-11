@@ -83,7 +83,6 @@ export const PaymentStatusHandler = () => {
                 }
 
             } catch (error: any) {
-                console.error('Error checking order status:', error);
                 setOrderStatus({
                     ok: false,
                     error: error.message

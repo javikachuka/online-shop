@@ -56,8 +56,7 @@ export const PaymentMethodsAdminClient = ({ paymentMethods }: Props) => {
 
       toast.success(result.message || 'Estado actualizado');
       router.refresh();
-    } catch (error) {
-      console.error('Error toggling payment method status:', error);
+    } catch {
       toast.error('Ocurrió un error inesperado al actualizar el estado');
     } finally {
       setLoadingId(null);

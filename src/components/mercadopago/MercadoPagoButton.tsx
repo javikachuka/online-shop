@@ -28,8 +28,6 @@ export const MercadoPagoButton = ({
         setError(null);
         
         try {
-            console.log('🚀 Iniciando checkout seguro...');
-            
             // Convertir cart a formato de checkout
             const items = cart.map(item => ({
                 variantId: item.variantId,
@@ -43,11 +41,6 @@ export const MercadoPagoButton = ({
                 return;
             }
             
-            console.log('✅ Checkout creado:', {
-                sessionToken: result.sessionToken,
-                expiresAt: result.reservationExpiresAt
-            });
-            
             // Guardar sessionToken en sessionStorage para tracking
             sessionStorage.setItem('current_session_token', result.sessionToken!);
             sessionStorage.setItem('order_expires_at', result.reservationExpiresAt!.toISOString());
@@ -60,7 +53,6 @@ export const MercadoPagoButton = ({
             }
             
         } catch (error: any) {
-            console.error('❌ Error en checkout:', error);
             setError(error.message || 'Error al procesar el pago');
         } finally {
             setLoading(false);

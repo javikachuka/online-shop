@@ -28,8 +28,7 @@ export default function PaymentFailurePage() {
             ? 'El pago no se completó y liberamos la reserva de stock para que puedas volver a intentarlo.'
             : 'El pago no se completó. Si el stock no se actualiza enseguida, intentá nuevamente en unos minutos.'
         );
-      } catch (error) {
-        console.error('Error liberando la reserva de checkout:', error);
+      } catch {
         setMessage('El pago no se completó. Si el stock no se actualiza enseguida, intentá nuevamente en unos minutos.');
       } finally {
         setIsReleasing(false);

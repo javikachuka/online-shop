@@ -40,8 +40,7 @@ export const MobileSearchModal = ({ isOpen, onClose }: Props) => {
         try {
           const results = await getSearchSuggestions(debouncedQuery, 8); // Más resultados en móvil
           setSuggestions(results);
-        } catch (error) {
-          console.error('Error fetching suggestions:', error);
+        } catch {
           setSuggestions([]);
         } finally {
           setLoading(false);

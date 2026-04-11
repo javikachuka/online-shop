@@ -19,8 +19,7 @@ export const StockDisplay = ({ variantId, totalStock, className = "" }: StockDis
                 setIsLoading(true);
                 const available = await getAvailableStock(variantId);
                 setAvailableStock(available);
-            } catch (error) {
-                console.error('Error fetching available stock:', error);
+            } catch {
                 setAvailableStock(totalStock); // Fallback al stock total
             } finally {
                 setIsLoading(false);

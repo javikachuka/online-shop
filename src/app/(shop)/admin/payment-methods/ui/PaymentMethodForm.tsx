@@ -62,8 +62,7 @@ export const PaymentMethodForm = ({ paymentMethod, onClose }: Props) => {
       toast.success(result.message || 'Método de pago guardado con éxito');
       onClose();
       router.refresh();
-    } catch (error) {
-      console.error('Error submitting payment method form:', error);
+    } catch {
       setError('Ocurrió un error inesperado al guardar');
       toast.error('Ocurrió un error inesperado al guardar');
     } finally {

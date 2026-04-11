@@ -70,8 +70,7 @@ export const AttributesForm = ({ attribute }: Props) => {
                 toast.success("Atributo creado con éxito")
                 router.push(`/admin/attributes`)
             }
-        } catch (error) {
-            console.error('Error submitting form:', error);
+        } catch {
             setError("Error inesperado al guardar");
             toast.error("Error inesperado al guardar");
         } finally {

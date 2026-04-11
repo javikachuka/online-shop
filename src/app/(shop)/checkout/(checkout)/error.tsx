@@ -1,18 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
 
 export default function CheckoutError({
-  error,
+  error: _error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("Checkout error:", error);
-  }, [error]);
 
   return (
     <div className="flex justify-center items-center mb-72 px-4 sm:px-0">

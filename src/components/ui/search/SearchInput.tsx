@@ -38,8 +38,7 @@ export const SearchInput = () => {
           const results = await getSearchSuggestions(debouncedQuery, 5);
           setSuggestions(results);
           setShowSuggestions(true);
-        } catch (error) {
-          console.error('Error fetching suggestions:', error);
+        } catch {
           setSuggestions([]);
         } finally {
           setLoading(false);

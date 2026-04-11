@@ -51,8 +51,8 @@ export const ProductsInCart = () => {
 
                 setVariantStock(data);
                 
-            } catch (error) {
-                console.error('Error fetching stock:', error);
+            } catch {
+                // Silently keep current cart state if stock refresh fails.
             }
         };
 
