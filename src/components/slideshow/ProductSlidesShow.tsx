@@ -52,7 +52,7 @@ export const ProductSlidesShow = ({ images, title, className }: Props) => {
                             height={600}
                             src={image.url}
                             alt={title}
-                            className="object-cover rounded-lg"
+                            className="object-contain rounded-lg"
                         />
                     </SwiperSlide>
                 ))}
