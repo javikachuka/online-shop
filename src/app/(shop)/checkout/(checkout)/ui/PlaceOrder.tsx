@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { placeOrder } from "@/actions";
+import { cancelCheckoutSession, placeOrder } from "@/actions";
 import { PaymentButtons, ShippingInfo } from "@/components";
 import { PaymentMethod } from "@/interfaces";
 import { useAddressStore, useCartStore } from "@/store";
@@ -48,6 +48,36 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
             setSelectedPayment(paymentsMethods[0]);
         }
     }, [paymentsMethods, selectedPayment]);
+
+    const isMercadoPagoMethod = (payment?: PaymentMethod | null) => {
+        return payment?.name.replace(/\s/g, '').toLowerCase() === 'mercadopago';
+    };
+
+    const handlePaymentMethodChange = async (paymentMethod: PaymentMethod) => {
+        if (selectedPayment?.id === paymentMethod.id) return;
+
+        const shouldReleasePreviousSession =
+            isMercadoPagoMethod(selectedPayment) && !isMercadoPagoMethod(paymentMethod);
+
+        if (shouldReleasePreviousSession) {
+            const currentSessionToken = sessionStorage.getItem('current_session_token');
+
+            if (currentSessionToken) {
+                const result = await cancelCheckoutSession(currentSessionToken);
+
+                if (!result.ok) {
+                    setErrorMessage(result.error || 'No se pudo liberar la reserva del intento anterior.');
+                    return;
+                }
+
+                sessionStorage.removeItem('current_session_token');
+                sessionStorage.removeItem('order_expires_at');
+            }
+        }
+
+        setErrorMessage('');
+        setSelectedPayment(paymentMethod);
+    };
 
     const onPlaceOrder = async () => {
         if (!selectedPayment) {
@@ -192,7 +222,7 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
                                         name="paymentMethod"
                                         className="peer sr-only"
                                         checked={selectedPayment?.id === pm.id}
-                                        onChange={() => setSelectedPayment(pm)}
+                                        onChange={() => handlePaymentMethodChange(pm)}
                                     />
                                     <span className="h-5 w-5 flex-shrink-0 rounded-full border-2 border-gray-300 bg-white peer-checked:border-blue-500 peer-checked:bg-blue-500 peer-checked:shadow-[inset_0_0_0_3px_white] transition-all duration-150" />
                                     <span className="text-sm select-none">{pm.name}</span>

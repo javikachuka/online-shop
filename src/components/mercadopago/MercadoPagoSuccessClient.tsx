@@ -48,6 +48,8 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
             if (clearCart || paymentStatus === 'approved' || paymentStatus === 'already_processed') {
                 clearCartStorage()
                 localStorage.removeItem('cart');
+                sessionStorage.removeItem('current_session_token');
+                sessionStorage.removeItem('order_expires_at');
               // TODO: También limpiar store si tienes uno
               // clearCartStore(); 
             }
@@ -73,12 +75,16 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
             break;
             
           case 'rejected':
+            sessionStorage.removeItem('current_session_token');
+            sessionStorage.removeItem('order_expires_at');
             setOrderStatus('rejected');
             setMessage('Tu pago fue rechazado');
             setError('El pago no pudo ser procesado. Por favor intenta nuevamente.');
             break;
             
           case 'cancelled':
+            sessionStorage.removeItem('current_session_token');
+            sessionStorage.removeItem('order_expires_at');
             setOrderStatus('cancelled');
             setMessage('El pago fue cancelado');
             setError('El pago fue cancelado. Puedes intentar nuevamente.');

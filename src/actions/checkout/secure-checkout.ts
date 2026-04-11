@@ -20,6 +20,45 @@ interface CheckoutItem {
     quantity: number;
 }
 
+interface StoredSessionCartItem {
+    variantId: string;
+    quantity: number;
+    originalPrice?: number;
+}
+
+const parseStoredJson = <T>(value: unknown): T => {
+    if (typeof value === 'string') {
+        return JSON.parse(value) as T;
+    }
+
+    return value as T;
+};
+
+const buildItemsSignature = (items: Array<{ variantId: string; quantity: number }>) => {
+    return JSON.stringify(
+        [...items]
+            .map((item) => ({
+                variantId: item.variantId,
+                quantity: item.quantity,
+            }))
+            .sort((a, b) => a.variantId.localeCompare(b.variantId))
+    );
+};
+
+const buildAddressSignature = (address: Partial<Address> & { countryId?: string }) => {
+    return JSON.stringify({
+        firstName: address.firstName ?? '',
+        lastName: address.lastName ?? '',
+        address: address.address ?? '',
+        address2: address.address2 ?? '',
+        postalCode: address.postalCode ?? '',
+        city: address.city ?? '',
+        phone: address.phone ?? '',
+        countryId: address.countryId ?? address.country ?? '',
+        deliveryMethod: address.deliveryMethod ?? 'delivery',
+    });
+};
+
 interface SecureCheckoutResult {
     ok: boolean;
     error?: string;
@@ -76,6 +115,111 @@ export const createSecureCheckout = async (
 
             if (variants.length !== items.length) {
                 throw new Error('Algunos productos no están disponibles');
+            }
+
+            const requestedItemsSignature = buildItemsSignature(items);
+            const requestedAddressSignature = buildAddressSignature({
+                ...address,
+                countryId: address.country
+            });
+
+            const activeOrderSessions = await tx.orderSession.findMany({
+                where: {
+                    userId,
+                    paymentMethodId,
+                    isProcessed: false,
+                    expiresAt: { gt: new Date() }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
+
+            const reusableSession = activeOrderSessions.find((session) => {
+                const storedItems = parseStoredJson<StoredSessionCartItem[]>(session.cartItems);
+                const storedAddress = parseStoredJson<Partial<Address> & { countryId?: string }>(session.address);
+
+                return (
+                    buildItemsSignature(storedItems) === requestedItemsSignature &&
+                    buildAddressSignature(storedAddress) === requestedAddressSignature
+                );
+            });
+
+            if (reusableSession) {
+                const duplicateSessions = activeOrderSessions.filter(
+                    (session) => session.id !== reusableSession.id
+                );
+
+                if (duplicateSessions.length > 0) {
+                    const releasedAt = new Date();
+
+                    for (const duplicateSession of duplicateSessions) {
+                        await tx.stockReservation.updateMany({
+                            where: {
+                                orderKey: duplicateSession.sessionToken,
+                                status: 'ACTIVE'
+                            },
+                            data: {
+                                status: 'RELEASED',
+                                releasedAt
+                            }
+                        });
+
+                        await tx.orderSession.update({
+                            where: { id: duplicateSession.id },
+                            data: {
+                                expiresAt: releasedAt,
+                                updatedAt: releasedAt
+                            }
+                        });
+                    }
+                }
+
+                console.log('♻️ Reutilizando OrderSession activa:', reusableSession.sessionToken);
+
+                const storedItems = parseStoredJson<StoredSessionCartItem[]>(reusableSession.cartItems);
+
+                return {
+                    sessionToken: reusableSession.sessionToken,
+                    total: reusableSession.total,
+                    reservationExpiresAt: reusableSession.expiresAt,
+                    orderItems: storedItems.map((item) => {
+                        const variant = variants.find((v) => v.id === item.variantId);
+
+                        return {
+                            title: variant?.product.title || 'Producto',
+                            quantity: item.quantity,
+                            price: Number(item.originalPrice ?? variant?.price ?? 0)
+                        };
+                    })
+                };
+            }
+
+            if (activeOrderSessions.length > 0) {
+                const releasedAt = new Date();
+
+                for (const activeSession of activeOrderSessions) {
+                    await tx.stockReservation.updateMany({
+                        where: {
+                            orderKey: activeSession.sessionToken,
+                            status: 'ACTIVE'
+                        },
+                        data: {
+                            status: 'RELEASED',
+                            releasedAt
+                        }
+                    });
+
+                    await tx.orderSession.update({
+                        where: { id: activeSession.id },
+                        data: {
+                            expiresAt: releasedAt,
+                            updatedAt: releasedAt
+                        }
+                    });
+                }
+
+                console.log(`🔓 Liberadas ${activeOrderSessions.length} sesiones activas previas para regenerar checkout`);
             }
 
             // 2.3 Validar stock disponible

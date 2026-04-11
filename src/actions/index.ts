@@ -47,4 +47,6 @@ export * from './attributes/save-update-attribute'
 
 export * from './company/company-actions'
 
+export * from './checkout/cancel-checkout-session'
+
 export * from './search/search-products'
