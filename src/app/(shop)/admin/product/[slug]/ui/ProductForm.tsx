@@ -6,7 +6,7 @@ import {
     Product,
     ProductImage
 } from "@/interfaces";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { CategoryCheckboxTree } from "./CategoryCheckboxTree";
 import { useForm } from "react-hook-form";
 import { IoCloseOutline } from "react-icons/io5";
@@ -31,7 +31,7 @@ interface FormInputs {
     description: string;
     tags: string;
     diffPrice: boolean;
-    ProductImage?: ProductImage[];
+    basePrice: string;
     isEnabled: boolean;
 }
 
@@ -43,7 +43,6 @@ export const ProductForm = ({
     const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
     const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 
-    console.log(product)
     const router = useRouter()
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
         []
@@ -92,16 +91,6 @@ export const ProductForm = ({
     const validateSlug = (slug: string) => {
         // Must be non-empty, only lowercase letters, numbers, and hyphens
         return /^[a-z0-9-]+$/.test(slug) && slug.length > 0;
-    };
-
-    const [slugError, setSlugError] = useState<string>("");
-
-    const handleSlugBlur = () => {
-        if (!validateSlug(slug)) {
-            setSlugError("Slug must contain only lowercase letters, numbers, and hyphens.");
-        } else {
-            setSlugError("");
-        }
     };
 
     // Slug generator without lodash
@@ -159,63 +148,63 @@ export const ProductForm = ({
         formState: { isValid },
         getValues,
         setValue,
+        watch,
     } = useForm<FormInputs>({
         defaultValues: {
             ...product,
             tags: product?.tags?.join(", ") || "",
             diffPrice: product?.diffPrice || false,
+            basePrice: product?.variants?.[0]?.price?.toString() || "",
         }
     })
 
-    // Estado para imágenes nuevas y existentes
-    const [newImages, setNewImages] = useState<File[]>([]);
-    const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const hasDifferentPrices = watch("diffPrice");
+    const basePrice = watch("basePrice");
 
-    // Actualizar imágenes nuevas
-    const handleNewImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const incomingFiles = Array.from(e.target.files);
-            const validFiles = incomingFiles.filter((file) => {
-                if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-                    toast.error(`Formato no permitido: ${file.name}. Usa JPG, PNG, WEBP o AVIF.`);
-                    return false;
-                }
+    const getDefaultVariantPrice = () => {
+        return (
+            basePrice ||
+            variants[0]?.price ||
+            product?.variants?.[0]?.price?.toString() ||
+            "0"
+        );
+    };
 
-                if (file.size > MAX_IMAGE_SIZE_BYTES) {
-                    toast.error(`La imagen ${file.name} supera 2MB.`);
-                    return false;
-                }
+    const handleBasePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setValue("basePrice", value, { shouldDirty: true });
 
-                return true;
-            });
-
-            setNewImages(validFiles);
-
-            if (fileInputRef.current) {
-                const dt = new DataTransfer();
-                validFiles.forEach(file => dt.items.add(file));
-                fileInputRef.current.files = dt.files;
-            }
+        if (!hasDifferentPrices) {
+            setVariants((prev) =>
+                prev.map((variant) => ({
+                    ...variant,
+                    price: value,
+                }))
+            );
         }
     };
+
+    const handleDiffPriceToggle = (checked: boolean) => {
+        setValue("diffPrice", checked, { shouldDirty: true });
+
+        if (!checked) {
+            const unifiedPrice = getDefaultVariantPrice();
+            setValue("basePrice", unifiedPrice, { shouldDirty: true });
+            setVariants((prev) =>
+                prev.map((variant) => ({
+                    ...variant,
+                    price: unifiedPrice,
+                }))
+            );
+        }
+    };
+
+    // Estado para imágenes existentes
+    const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
 
     // Eliminar imagen existente (marcar para borrar)
     const handleRemoveImage = (imageId: string) => {
         setImagesToDelete(prev => [...prev, imageId]);
-    };
-
-    // Eliminar imagen nueva (remover del estado)
-    const handleRemoveNewImage = (idx: number) => {
-        const updatedImages = newImages.filter((_, i) => i !== idx);
-        setNewImages(updatedImages);
-        // Actualizar el input file para reflejar el nuevo estado
-        if (fileInputRef.current) {
-            // Crear un nuevo DataTransfer para los archivos restantes
-            const dt = new DataTransfer();
-            updatedImages.forEach(file => dt.items.add(file));
-            fileInputRef.current.files = dt.files;
-        }
     };
 
         // Manejador para cuando cambian las imágenes de un grupo específico
@@ -260,7 +249,7 @@ export const ProductForm = ({
     // Campos para nueva variante
     const [newVariant, setNewVariant] = useState({
         price: "",
-        stock: "",
+        stock: "1",
         sku: "",
         attributes: [] as Array<{ id: string; attributeId: string; value: string }>, // ← FIX: Inicializar vacío
         discountPercent: "",
@@ -312,8 +301,8 @@ export const ProductForm = ({
         setEditVariantIndex(null);
         // ← FIX: Inicializar correctamente los atributos basándose en selectedAttributeIds
         setNewVariant({
-            price: "",
-            stock: "",
+            price: getDefaultVariantPrice(),
+            stock: "1",
             sku: "",
             attributes: attributes
                 .filter((attr) => selectedAttributeIds.includes(attr.id))
@@ -352,8 +341,8 @@ export const ProductForm = ({
     const closeVariantModal = () => {
         setVariantModalOpen(false);
         setNewVariant({
-            price: "",
-            stock: "",
+            price: getDefaultVariantPrice(),
+            stock: "1",
             sku: "",
             attributes: attributes
                 .filter((attr) => selectedAttributeIds.includes(attr.id))
@@ -382,10 +371,11 @@ export const ProductForm = ({
             return;
         }
 
-        
+        const variantPrice = hasDifferentPrices ? newVariant.price : getDefaultVariantPrice();
+
         const variantData = {
             id: editVariantIndex !== null ? variants[editVariantIndex].id : Math.random().toString(36).slice(2),
-            price: newVariant.price,
+            price: variantPrice,
             stock: newVariant.stock,
             sku: newVariant.sku,
             discountPercent: newVariant.discountPercent,
@@ -441,6 +431,10 @@ export const ProductForm = ({
             errors.categories = "At least one category must be selected.";
             valid = false;
         }
+        if (!hasDifferentPrices && !getValues("basePrice")?.trim()) {
+            errors.basePrice = "Debes definir un precio base para las variantes.";
+            valid = false;
+        }
         if (!variants.length) {
             errors.variants = "Al menos una variante es requerida.";
             valid = false;
@@ -457,94 +451,9 @@ export const ProductForm = ({
                 }
             }
         }
-        // Validate images (new + existing, minus deleted)
-        const existingImages = (product?.ProductImage || []).filter(img => !imagesToDelete.includes(img.id));
-        const totalImages = existingImages.length + newImages.length;
-        //para validar las imagenes cargadas
-        // if (totalImages === 0) {
-        //     errors.images = "Al menos 1 imágen es requerida.";
-        //     valid = false;
-        // }
         setFormErrors(errors);
         return valid;
     };
-
-    // --- LÓGICA CRÍTICA: Obtener grupos reales basados en variantes cargadas ---
-    // Esta función analiza las variantes actuales y extrae los valores únicos del atributo visual
-    const getActiveVisualGroups = () => {
-        if (!visualAttributeId) return ["General"];
-        
-        const activeValues = new Set<string>();
-        variants.forEach(v => {
-            const attr = v.attributes.find(a => a.attributeId === visualAttributeId);
-            if (attr && attr.value) activeValues.add(attr.value);
-        });
-        
-        return Array.from(activeValues);
-    };
-
-    const activeGroups = getActiveVisualGroups();
-
-        // --- RENDERIZADO DINÁMICO DE DROPZONES ---
-    const renderImageZones = () => {
-        const visualAttr = attributes.find(a => a.id === visualAttributeId);
-        
-        // Si no hay atributo visual seleccionado, mostramos un cargador general
-        if (!visualAttributeId || !visualAttr) {
-            return (
-                <div className="border-2 border-dashed p-4 rounded-md">
-                    <span className="block mb-2 font-medium">Imágenes Generales</span>
-                    <input 
-                        type="file" multiple 
-                        onChange={(e) => handleGroupedImagesChange("general", e.target.files)} 
-                    />
-                    {renderPreview("general")}
-                </div>
-            );
-        }
-
-        // Si hay atributo visual (ej: Color), generamos una zona por cada valor (Rojo, Azul, etc.)
-        return (
-            <div className="space-y-6">
-                <p className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                    Carga las imágenes específicas para cada <strong>{visualAttr.name}</strong>.
-                </p>
-                {visualAttr.values.map(val => (
-                    <div key={val.id} className="border p-4 rounded-lg bg-white shadow-sm">
-                        <span className="block mb-3 font-bold text-gray-700">Variante: {val.value}</span>
-                        <input 
-                            type="file" 
-                            multiple 
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                            onChange={(e) => handleGroupedImagesChange(val.value, e.target.files)} 
-                        />
-                        {renderPreview(val.value)}
-                    </div>
-                ))}
-            </div>
-        );
-    };
-
-    const renderPreview = (groupKey: string) => (
-        <div className="grid grid-cols-3 gap-2 mt-3">
-            {groupedNewImages[groupKey]?.map((file, idx) => (
-                <div key={idx} className="relative group">
-                    <img 
-                        src={URL.createObjectURL(file)} 
-                        className="w-full h-24 object-cover rounded-md" 
-                        alt="preview" 
-                    />
-                    <button
-                        type="button"
-                        onClick={() => removeImageFromGroup(groupKey, idx)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                        <IoCloseOutline size={16} />
-                    </button>
-                </div>
-            ))}
-        </div>
-    );
 
     const handleSubmitForm = async (data: FormInputs) => {
         if(!isValid) return;
@@ -578,8 +487,6 @@ export const ProductForm = ({
         selectedCategoryIds.forEach(cat => formData.append('categories[]', cat));
 
         formData.append('variants', JSON.stringify(cleanVariants));
-        // Imágenes nuevas
-        newImages.forEach(file => formData.append('newImages', file));
         // Solo IDs de imágenes a borrar
         imagesToDelete.forEach(id => formData.append('imagesToDelete[]', id));
 
@@ -629,8 +536,8 @@ export const ProductForm = ({
 
         const newVariants = combinations.map(combo => ({
             id: Math.random().toString(36).substring(7),
-            price: getValues("diffPrice") ? "0" : (product?.variants?.[0]?.price.toString() || "0"),
-            stock: "0",
+            price: getDefaultVariantPrice(),
+            stock: "1",
             // Aquí 'c' ya sabe que tiene .value gracias al tipado de combinations
             sku: `${getValues("slug").toUpperCase()}-${combo.map((c: ComboAttribute) => c.value.substring(0,3).toUpperCase()).join("-")}`,
             attributes: combo.map((c: ComboAttribute) => ({
@@ -706,7 +613,6 @@ export const ProductForm = ({
                             className="p-2 border rounded-md bg-gray-200"
                             value={slug}
                             onChange={handleSlugChange}
-                            onBlur={handleSlugBlur}
                         />
                         {formErrors.slug && <span className="text-red-500 text-xs">{formErrors.slug}</span>}
                         <span className="text-xs text-gray-500">Identificador URL. Autogenerada basada en el titulo, se puede editar manualmente.</span>
@@ -742,6 +648,37 @@ export const ProductForm = ({
                             {...register("tags")}
                         />
                     </div>
+
+                    <div className="flex flex-col mb-4">
+                        <span className="text-lg">Precio de variantes</span>
+                        <label className="mt-2 flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={Boolean(hasDifferentPrices)}
+                                onChange={(e) => handleDiffPriceToggle(e.target.checked)}
+                            />
+                            <span>Permitir precios diferentes por variante</span>
+                        </label>
+                        <span className="text-xs text-gray-500">
+                            Si no lo activas, todas las variantes usarán el mismo precio.
+                        </span>
+                    </div>
+
+                    {!hasDifferentPrices && (
+                        <div className="flex flex-col mb-2">
+                            <span className="text-lg">Precio base</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="p-2 border rounded-md bg-gray-200"
+                                value={basePrice || ""}
+                                onChange={handleBasePriceChange}
+                            />
+                            {formErrors.basePrice && <span className="text-red-500 text-xs">{formErrors.basePrice}</span>}
+                            <span className="text-xs text-gray-500">Este valor se aplicará automáticamente a todas las variantes.</span>
+                        </div>
+                    )}
 
                     <div className="flex flex-col mb-2">
                         <span className="text-lg">Categorías</span>
@@ -952,23 +889,6 @@ export const ProductForm = ({
                                         </div>
                                     ))}
 
-                                    {/* B. IMÁGENES NUEVAS (LOCALES) - Tu lógica actual */}
-                                    {/* {groupedNewImages[groupName]?.map((file, idx) => (
-                                        <div key={idx} className="relative aspect-square">
-                                        <img 
-                                            src={URL.createObjectURL(file)} 
-                                            className="w-full h-full object-cover rounded-md border-2 border-green-200" 
-                                            alt="preview"
-                                        />
-                                        <button 
-                                            type="button"
-                                            onClick={() => removeImageFromGroup(groupName, idx)}
-                                            className="absolute -top-1 -right-1 bg-gray-500 text-white rounded-full p-0.5"
-                                        >
-                                            <IoCloseOutline size={12}/>
-                                        </button>
-                                        </div>
-                                    ))} */}
                                 </div>
 
                                 {/* Preview de imágenes del grupo */}
@@ -1016,16 +936,18 @@ export const ProductForm = ({
                             onChange={(e) => setNewVariant((v) => ({ ...v, sku: e.target.value }))}
                         />
                     </div>
-                    <div className="flex flex-col w-full">
-                        <label className="text-xs font-semibold mb-1">Precio</label>
-                        <input
-                            type="number"
-                            placeholder="Precio"
-                            className="p-2 border rounded-md w-full"
-                            value={newVariant.price}
-                            onChange={(e) => setNewVariant((v) => ({ ...v, price: e.target.value }))}
-                        />
-                    </div>
+                    {hasDifferentPrices && (
+                        <div className="flex flex-col w-full">
+                            <label className="text-xs font-semibold mb-1">Precio</label>
+                            <input
+                                type="number"
+                                placeholder="Precio"
+                                className="p-2 border rounded-md w-full"
+                                value={newVariant.price}
+                                onChange={(e) => setNewVariant((v) => ({ ...v, price: e.target.value }))}
+                            />
+                        </div>
+                    )}
                     <div className="flex flex-col w-full">
                         <label className="text-xs font-semibold mb-1">Stock</label>
                         <input
