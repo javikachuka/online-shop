@@ -167,14 +167,9 @@ export default async function CategoryPage({ params }: Props) {
                                     </>
                                 )
                             }
-                            {/* Información de envío */}
+                            {/* Información de envío: solo para entregas a domicilio */}
                             {
-                                orderData.order?.deliveryMethod === 'pickup' ? (
-                                    <>
-                                        <span>Retiro en local</span>
-                                        <span className="text-right text-green-600 font-semibold">¡GRATIS!</span>
-                                    </>
-                                ) : (
+                                orderData.order?.deliveryMethod !== 'pickup' && (
                                     orderData.order?.freeShipping ? (
                                         <>
                                             <span>Envío a domicilio</span>
