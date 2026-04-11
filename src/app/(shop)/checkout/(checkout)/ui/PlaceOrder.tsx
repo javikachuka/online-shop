@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { placeOrder } from "@/actions";
-import { PaymentButtons, ShippingBadge, ShippingInfo } from "@/components";
+import { PaymentButtons, ShippingInfo } from "@/components";
 import { PaymentMethod } from "@/interfaces";
 import { useAddressStore, useCartStore } from "@/store";
 import { useOrderSummary } from "@/hooks";
@@ -19,6 +20,7 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
     const [errorMessage, setErrorMessage] = useState("");
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<PaymentMethod | null>(paymentsMethods.length > 0 ? paymentsMethods[0] : null);
+    const hasAvailablePaymentMethods = paymentsMethods.length > 0;
 
     const address = useAddressStore((state) => state.getAddress());
     const cart = useCartStore((state) => state.cart);
@@ -41,8 +43,19 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
         setLoaded(true);
     }, []);
 
+    useEffect(() => {
+        if (!selectedPayment && paymentsMethods.length > 0) {
+            setSelectedPayment(paymentsMethods[0]);
+        }
+    }, [paymentsMethods, selectedPayment]);
+
     const onPlaceOrder = async () => {
-        
+        if (!selectedPayment) {
+            setErrorMessage("No pudimos cargar las opciones de pago en este momento. Intentá nuevamente.");
+            return;
+        }
+
+        setErrorMessage("");
         setIsPlacingOrder(true)
 
         const productsToOrder = cart.map(variant => ({
@@ -53,7 +66,7 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
         
         
 
-        const response = await placeOrder(productsToOrder, address, selectedPayment!);
+        const response = await placeOrder(productsToOrder, address, selectedPayment);
 
         if(!response.ok){
             setIsPlacingOrder(false)
@@ -153,12 +166,24 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
             <div className="mb-4">
                 <h2 className="text-2xl mb-2">Forma de pago</h2>
                 <div className="flex flex-col">
-                    {
-                        paymentsMethods.length === 0 && (
-                            <span className="text-red-500">No hay métodos de pago disponibles</span>
-                        )
-                    }
-                    {
+                    {!hasAvailablePaymentMethods ? (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                            <p className="font-semibold">No pudimos cargar las opciones de pago.</p>
+                            <p className="mt-1">Intentá nuevamente en unos minutos o volvé al carrito para revisar tu compra.</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => router.refresh()}
+                                >
+                                    Reintentar
+                                </button>
+                                <Link href="/cart" className="btn-primary">
+                                    Volver al carrito
+                                </Link>
+                            </div>
+                        </div>
+                    ) : (
                         paymentsMethods.map(pm => (
                             <div className="flex items-center" key={pm.id}>
                                 <label className="flex cursor-pointer items-center gap-2 py-2 px-1">
@@ -174,7 +199,7 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
                                 </label>
                             </div>
                         ))
-                    }
+                    )}
                 </div>
                 {selectedPayment?.description && (
                     <div className={`mt-2 ${selectedPayment.discountPercent ? 'text-green-600' : ''} text-sm font-semibold`}>
@@ -209,18 +234,22 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
                     </span>
                 </p>
                 {errorMessage && (
-                        <p className="text-red-500">{errorMessage}</p>
+                        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</p>
                     )
                 }
 
-                {
+                {selectedPayment ? (
                     <PaymentButtons 
-                        selectedPayment={selectedPayment!}
-                        disabled={isPlacingOrder||selectedPayment===null}
+                        selectedPayment={selectedPayment}
+                        disabled={isPlacingOrder || !hasAvailablePaymentMethods}
                         onPlaceOrder={onPlaceOrder}
                         cart={cart}
                     />
-                }
+                ) : (
+                    <button disabled className="flex justify-center w-full btn-disabled">
+                        Pago no disponible temporalmente
+                    </button>
+                )}
             </div>
         </div>
     );

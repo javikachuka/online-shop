@@ -3,13 +3,15 @@ import { MercadoPagoButton } from "../mercadopago/MercadoPagoButton";
 
 
 interface Props {
-    selectedPayment: PaymentMethod,
+    selectedPayment?: PaymentMethod | null,
     disabled?: boolean,
     onPlaceOrder?: () => void,
     cart?: any[],
 }
 
 export const PaymentButtons = ({selectedPayment, disabled, onPlaceOrder, cart} : Props) => {
+
+    if (!selectedPayment) return null;
 
     if (selectedPayment.name.replace(/\s/g, "") === "MercadoPago") {
         return (
