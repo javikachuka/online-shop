@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { PasswordResetService } from '@/lib/password-reset';
 import { EmailService } from '@/lib/email';
+import { sendOrderPaymentConfirmationEmail, sendOrderTransferInstructionsEmail } from '@/lib/order-email';
 import bcryptjs from 'bcryptjs';
 
 export async function requestPasswordReset(email: string): Promise<{
@@ -215,69 +216,12 @@ export async function sendOrderConfirmationEmail(orderId: string): Promise<{
   ok: boolean;
   message: string;
 }> {
-  try {
-    // Buscar orden con detalles completos
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        user: true,
-        OrderItem: {
-          include: {
-            product: true,
-            variant: {
-              include: {
-                attributes: {
-                  include: {
-                    attribute: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        OrderAddress: true
-      }
-    });
+  return sendOrderPaymentConfirmationEmail(orderId);
+}
 
-    if (!order) {
-      return {
-        ok: false,
-        message: 'Orden no encontrada'
-      };
-    }
-
-    // Preparar datos para el email
-    const orderData = {
-      orderId: order.id,
-      customerName: `${order.user.firstName} ${order.user.lastName}`,
-      items: order.OrderItem.map(item => ({
-        name: item.product.title,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      total: order.total,
-      shippingAddress: order.OrderAddress ? 
-        `${order.OrderAddress.firstName} ${order.OrderAddress.lastName}, ${order.OrderAddress.address}, ${order.OrderAddress.city}, ${order.OrderAddress.postalCode}` 
-        : undefined
-    };
-
-    // Enviar email
-    const emailService = EmailService.getInstance();
-    await emailService.sendOrderConfirmationEmail(order.user.email, orderData);
-
-    console.log(`Order confirmation email sent for order: ${orderId}`);
-
-    return {
-      ok: true,
-      message: 'Email de confirmación enviado correctamente'
-    };
-
-  } catch (error) {
-    console.error('Error in sendOrderConfirmationEmail:', error);
-    
-    return {
-      ok: false,
-      message: 'Error enviando email de confirmación'
-    };
-  }
+export async function sendTransferInstructionsEmail(orderId: string): Promise<{
+  ok: boolean;
+  message: string;
+}> {
+  return sendOrderTransferInstructionsEmail(orderId);
 }

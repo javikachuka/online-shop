@@ -1,7 +1,8 @@
 'use server'
 
 import { validateMercadoPagoPayment } from './validate-mercadopago-payment';
-import {prisma} from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
+import { sendOrderPaymentConfirmationEmail } from '@/lib/order-email';
 
 interface ProcessApprovedPaymentResult {
     ok: boolean;
@@ -65,8 +66,18 @@ export const processApprovedPayment = async (paymentId: string): Promise<Process
 
         // 3. PROCESAR SEGÚN ESTADO DE MP
         switch (paymentData.status) {
-            case 'approved':
-                return await handleApprovedPayment(orderId, paymentId, paymentData);
+            case 'approved': {
+                const result = await handleApprovedPayment(orderId, paymentId, paymentData);
+
+                if (result.ok && result.status === 'approved' && result.orderId) {
+                    const emailResult = await sendOrderPaymentConfirmationEmail(result.orderId);
+                    if (!emailResult.ok) {
+                        console.error(`⚠️ No se pudo enviar el email de confirmación para la orden ${result.orderId}: ${emailResult.message}`);
+                    }
+                }
+
+                return result;
+            }
                 
             case 'pending':
             case 'in_process':
@@ -141,6 +152,7 @@ async function handleApprovedPayment(
             const updatedOrder = await tx.order.update({
                 where: { id: orderId },
                 data: {
+                    orderStatus: 'paid',
                     paymentStatus: 'approved',
                     isPaid: true,
                     paidAt: new Date(paymentData.dateApproved || Date.now()),

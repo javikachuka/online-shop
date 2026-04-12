@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {prisma} from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { sendOrderPaymentConfirmationEmail } from '@/lib/order-email';
 
 const mercadopago = new MercadoPagoConfig({
     accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!
@@ -159,6 +160,13 @@ async function processPaymentWebhook(paymentId: string) {
             payment,
             paymentId
         );
+
+        if (result.status === 'approved_by_webhook' && result.orderId) {
+            const emailResult = await sendOrderPaymentConfirmationEmail(result.orderId);
+            if (!emailResult.ok) {
+                console.error(`⚠️ No se pudo enviar el email de confirmación para la orden ${result.orderId}: ${emailResult.message}`);
+            }
+        }
 
         console.log('✅ Pago procesado exitosamente por webhook:', result);
         return result;

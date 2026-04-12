@@ -77,7 +77,7 @@ export default async function CategoryPage({ params }: Props) {
                                 status={"Entregado"}
                                 Icon={IoCheckmarkCircleOutline}
                                 colorClass="bg-blue-700" />
-                        ) : orderData.order?.orderStatus === 'paid' || (orderData.order?.isPaid && orderData.order?.paymentStatus === 'paid') ? (
+                        ) : orderData.order?.orderStatus === 'paid' || orderData.order?.isPaid || orderData.order?.paymentStatus === 'approved' || orderData.order?.paymentStatus === 'paid' ? (
                             <OrderStatus
                                 status={"Pagado"}
                                 Icon={IoWalletOutline}

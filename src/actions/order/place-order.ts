@@ -3,7 +3,8 @@
 import { auth } from "@/auth.config";
 import { Address, PaymentMethod } from "@/interfaces";
 import { calculateShippingCost } from "@/actions/shipping/calculate-shipping";
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { sendOrderTransferInstructionsEmail } from "@/lib/order-email";
 
 
 interface ProductToOrder {
@@ -227,6 +228,13 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
             }
     
         })
+
+        if (selectedPayment.type === 'offline') {
+            const emailResult = await sendOrderTransferInstructionsEmail(prismaTx.order.id);
+            if (!emailResult.ok) {
+                console.error(`⚠️ No se pudo enviar el email de transferencia para la orden ${prismaTx.order.id}: ${emailResult.message}`);
+            }
+        }
 
         return {
             ok: true,

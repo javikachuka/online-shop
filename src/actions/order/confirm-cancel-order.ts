@@ -1,8 +1,9 @@
 'use server'
 
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth.config";
 import { revalidatePath } from "next/cache";
+import { sendOrderPaymentConfirmationEmail } from "@/lib/order-email";
 
 export async function confirmOrCancelOrder(orderId: string, action: 'confirm' | 'cancel') {
     const session = await auth();
@@ -19,18 +20,27 @@ export async function confirmOrCancelOrder(orderId: string, action: 'confirm' | 
                 data: {
                     isPaid: true,
                     paidAt: new Date(),
-                    paymentStatus: 'paid',
+                    orderStatus: 'paid',
+                    paymentStatus: 'approved',
                 },
             });
+
+            const emailResult = await sendOrderPaymentConfirmationEmail(order.id);
+            if (!emailResult.ok) {
+                console.error(`⚠️ No se pudo enviar el email de pago confirmado para la orden ${order.id}: ${emailResult.message}`);
+            }
+
             revalidatePath('/admin/orders')
             revalidatePath(`/admin/orders/${order.id}`)
             revalidatePath(`/orders`)
+            revalidatePath(`/orders/${order.id}`)
             return { ok: true, order };
         } else if (action === 'cancel') {
             // Cancelar: marcar como cancelado y devolver stock
             const order = await prisma.order.update({
                 where: { id: orderId },
                 data: {
+                    orderStatus: 'cancelled',
                     paymentStatus: 'cancelled',
                 },
             });

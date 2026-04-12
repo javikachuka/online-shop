@@ -1,6 +1,7 @@
 'use server'
 
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { EmailService } from "@/lib/email";
 import bcryptjs from 'bcryptjs';
 
 
@@ -39,6 +40,16 @@ export const registerUser = async (
                 createdAt: true
             }
         })
+
+        try {
+            const emailService = EmailService.getInstance();
+            await emailService.sendWelcomeEmail(
+                user.email,
+                `${user.firstName} ${user.lastName}`.trim()
+            );
+        } catch (emailError) {
+            console.error('Error enviando email de bienvenida:', emailError);
+        }
 
         return {
             ok: true,
