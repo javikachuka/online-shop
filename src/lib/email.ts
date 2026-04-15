@@ -58,6 +58,32 @@ export class EmailService {
     return process.env.FROM_EMAIL || 'noreply@example.com';
   }
 
+  private async send({
+    to,
+    subject,
+    html,
+    context,
+  }: {
+    to: string;
+    subject: string;
+    html: string;
+    context: string; // e.g. 'welcome | user@x.com'
+  }): Promise<void> {
+    const from = this.getFromEmail();
+
+    const response = await this.resend.emails.send({ from, to, subject, html });
+
+    if (response.error) {
+      const { name, message, statusCode } = response.error as { name: string; message: string; statusCode: number };
+      console.error(
+        `[EmailService] Send failed | context=${context} | from=${from} | to=${to} | status=${statusCode} | ${name}: ${message}`
+      );
+      throw new Error(`[EmailService] ${name} (${statusCode}): ${message}`);
+    }
+
+    console.log(`[EmailService] Sent | context=${context} | to=${to} | id=${response.data?.id}`);
+  }
+
   private getCompanyName(): string {
     return process.env.COMPANY_NAME || 'Tu Empresa';
   }
@@ -259,17 +285,15 @@ export class EmailService {
         `,
       });
 
-      await this.resend.emails.send({
-        from: this.getFromEmail(),
+      await this.send({
         to,
         subject: `Recuperar contraseña - ${this.getCompanyName()}`,
         html: htmlContent,
+        context: `password-reset | ${to}`,
       });
-
-      console.log(`Password reset email sent to: ${to}`);
     } catch (error) {
-      console.error('Error sending password reset email:', error);
-      throw new Error('Failed to send password reset email');
+      console.error('[EmailService] Error in sendPasswordResetEmail:', error);
+      throw error;
     }
   }
 
@@ -290,17 +314,15 @@ export class EmailService {
         `,
       });
 
-      await this.resend.emails.send({
-        from: this.getFromEmail(),
+      await this.send({
         to,
         subject: `¡Bienvenido a ${this.getCompanyName()}!`,
         html: htmlContent,
+        context: `welcome | ${to}`,
       });
-
-      console.log(`Welcome email sent to: ${to}`);
     } catch (error) {
-      console.error('Error sending welcome email:', error);
-      throw new Error('Failed to send welcome email');
+      console.error('[EmailService] Error in sendWelcomeEmail:', error);
+      throw error;
     }
   }
 
@@ -352,17 +374,15 @@ export class EmailService {
         `,
       });
 
-      await this.resend.emails.send({
-        from: this.getFromEmail(),
+      await this.send({
         to,
         subject: `Pago confirmado - Pedido #${orderData.orderId}`,
         html: htmlContent,
+        context: `order-confirmation | order=${orderData.orderId} | ${to}`,
       });
-
-      console.log(`Order confirmation email sent to: ${to} for order: ${orderData.orderId}`);
     } catch (error) {
-      console.error('Error sending order confirmation email:', error);
-      throw new Error('Failed to send order confirmation email');
+      console.error('[EmailService] Error in sendOrderConfirmationEmail:', error);
+      throw error;
     }
   }
 
@@ -437,17 +457,15 @@ export class EmailService {
         `,
       });
 
-      await this.resend.emails.send({
-        from: this.getFromEmail(),
+      await this.send({
         to,
         subject: `Instrucciones de transferencia - Pedido #${orderData.orderId}`,
         html: htmlContent,
+        context: `transfer-instructions | order=${orderData.orderId} | ${to}`,
       });
-
-      console.log(`Transfer instructions email sent to: ${to} for order: ${orderData.orderId}`);
     } catch (error) {
-      console.error('Error sending transfer instructions email:', error);
-      throw new Error('Failed to send transfer instructions email');
+      console.error('[EmailService] Error in sendTransferInstructionsEmail:', error);
+      throw error;
     }
   }
 }
