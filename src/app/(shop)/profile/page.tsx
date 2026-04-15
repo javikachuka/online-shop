@@ -1,6 +1,5 @@
 import { auth } from "@/auth.config";
 import { Title } from "@/components";
-import { redirect } from "next/navigation";
 
 type ExtendedUser = {
     id: string;
@@ -16,11 +15,8 @@ type ExtendedUser = {
 };
 
 export default async function ProfilePage() {
-    const session = await auth() as { user: ExtendedUser } | null;
-
-    if(!session?.user){
-        redirect('/auth/login?redirectTo=/profile')
-    }
+    // Middleware garantiza autenticación, por lo que auth() debe estar disponible
+    const session = (await auth()) as { user: ExtendedUser };
 
     return (
         <div className="flex justify-center items-center mb-72 px-4 sm:px-0">

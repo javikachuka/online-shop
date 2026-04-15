@@ -20,26 +20,27 @@ interface Props {
 export default async function OrdersPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
-    const redirectTo = searchParams.page ? `/admin/users?page=${searchParams.page}` : '/admin/users';
 
     const { users, totalPages, ok } = await getPaginatedUsers(page);
-
-    if (!ok) {
-          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
-    }
 
     return (
         <>
             <Title title="Todos los usuarios" />
 
-            <div className="mb-10">
-                <div className="overflow-x-auto">
-                    <UsersTable users={users ?? []}/>
+            {!ok ? (
+                <div className="flex justify-center items-center mb-72">
+                    <p className="text-red-500 text-lg">No se pudieron cargar los usuarios.</p>
                 </div>
-                {totalPages && totalPages > 1 && (
-                    <Pagination totalPages={totalPages}/>
-                )}
-            </div>
+            ) : (
+                <div className="mb-10">
+                    <div className="overflow-x-auto">
+                        <UsersTable users={users ?? []}/>
+                    </div>
+                    {totalPages && totalPages > 1 && (
+                        <Pagination totalPages={totalPages}/>
+                    )}
+                </div>
+            )}
         </>
     );
 }

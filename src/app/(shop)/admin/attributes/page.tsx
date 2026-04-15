@@ -21,25 +21,24 @@ interface Props {
 export default async function AttributesPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
-    const redirectTo = searchParams.page ? `/admin/attributes?page=${searchParams.page}` : '/admin/attributes';
 
     const { attributes, totalPages, ok } = await getPaginatedAttributes(page);
-
-    
-
-    if (!ok) {
-          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
-    }
 
     return (
         <>
             <Title title="Mantenimiento de atributos de producto" />
 
-            <div className="flex justify-end mb-5">
-                <Link href={'/admin/attributes/new'} className="btn-primary">
-                    Nuevo Atributo
-                </Link>
-            </div>
+            {!ok ? (
+                <div className="flex justify-center items-center mb-72">
+                    <p className="text-red-500 text-lg">No se pudieron cargar los atributos.</p>
+                </div>
+            ) : (
+                <>
+                <div className="flex justify-end mb-5">
+                    <Link href={'/admin/attributes/new'} className="btn-primary">
+                        Nuevo Atributo
+                    </Link>
+                </div>
 
             <div className="mb-10">
                 <div className="overflow-x-auto">
@@ -114,6 +113,8 @@ export default async function AttributesPage({ searchParams }: Props) {
                     <Pagination totalPages={totalPages}/>
                 )}
             </div>
+                </>
+            )}
         </>
     );
 }

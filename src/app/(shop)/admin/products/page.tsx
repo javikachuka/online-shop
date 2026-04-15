@@ -18,25 +18,24 @@ interface Props {
 export default async function OrdersPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
-    const redirectTo = searchParams.page ? `/admin/products?page=${searchParams.page}` : '/admin/products';
 
     const { products, totalPages, ok } = await getPaginatedProducts(page);
-
-    
-
-    if (!ok) {
-          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
-    }
 
     return (
         <>
             <Title title="Mantenimiento de Productos" />
 
-            <div className="flex justify-end mb-5">
-                <Link href={'/admin/product/new'} className="btn-primary">
-                    Nuevo Producto
-                </Link>
-            </div>
+            {!ok ? (
+                <div className="flex justify-center items-center mb-72">
+                    <p className="text-red-500 text-lg">No se pudieron cargar los productos.</p>
+                </div>
+            ) : (
+                <>
+                <div className="flex justify-end mb-5">
+                    <Link href={'/admin/product/new'} className="btn-primary">
+                        Nuevo Producto
+                    </Link>
+                </div>
 
             <div className="mb-10">
                 <div className="overflow-x-auto">
@@ -163,6 +162,8 @@ export default async function OrdersPage({ searchParams }: Props) {
                     <Pagination totalPages={totalPages}/>
                 )}
             </div>
+                </>
+            )}
         </>
     );
 }

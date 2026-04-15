@@ -19,21 +19,21 @@ interface Props {
 export default async function OrdersPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
-    const redirectTo = searchParams.page ? `/admin/orders?page=${searchParams.page}` : '/admin/orders';
 
     const { orders, totalPages, ok } = await getPaginatedOrders(page);
-
-    if (!ok) {
-          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
-    }
 
     return (
         <>
             <Title title="Todos los pedidos" />
 
-            <div className="mb-10">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full">
+            {!ok ? (
+                <div className="flex justify-center items-center mb-72">
+                    <p className="text-red-500 text-lg">No se pudieron cargar los pedidos.</p>
+                </div>
+            ) : (
+                <div className="mb-10">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full">
                         <thead className="bg-gray-200 border-b">
                             <tr>
                                 <th
@@ -149,11 +149,12 @@ export default async function OrdersPage({ searchParams }: Props) {
                             ))}
                         </tbody>
                     </table>
+                    </div>
+                    {totalPages && totalPages > 1 && (
+                        <Pagination totalPages={totalPages}/>
+                    )}
                 </div>
-                {totalPages && totalPages > 1 && (
-                    <Pagination totalPages={totalPages}/>
-                )}
-            </div>
+            )}
         </>
     );
 }

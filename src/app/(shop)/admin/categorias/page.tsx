@@ -16,10 +16,9 @@ interface Props {
 
 export default async function CategoriasPage({ searchParams }: Props) {
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
-    const redirectTo = searchParams.page ? `/admin/categorias?page=${searchParams.page}` : '/admin/categorias';
     const { categories, totalPages, ok } = await getPaginatedCaterories(page);
     if (!ok) {
-      redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+      return <div className="text-red-500 text-lg">No se pudieron cargar las categorías.</div>;
     }
     return <CategoriasAdminClient categories={categories || []} totalPages={totalPages || 1} />;
 }

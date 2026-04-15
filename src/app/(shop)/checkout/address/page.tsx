@@ -2,20 +2,16 @@ import { Title } from '@/components';
 import { AddressForm } from './ui/AddressForm';
 import { getCountries, getDefaultCompany, getUserAddress } from '@/actions';
 import { auth } from '@/auth.config';
-import { redirect } from 'next/navigation';
 
 export default async function NamePage() {
-  const session = await auth()
-
-  if(!session?.user){
-    redirect('/auth/login?redirectTo=/checkout/address')
-  }
+  // Middleware garantiza autenticación
+  const session = (await auth())!;
 
   const countries = await getCountries()
 
   const company = await getDefaultCompany()
 
-  const userAddress = await getUserAddress(session.user.id) ?? undefined
+  const userAddress = await getUserAddress(session.user!.id) ?? undefined
 
   return (
     <div className="flex flex-col sm:justify-center sm:items-center mb-72 px-4 sm:px-0">

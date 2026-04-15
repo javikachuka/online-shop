@@ -9,7 +9,7 @@ export default async function PaymentMethodsPage() {
   const { ok, paymentMethods } = await getAdminPaymentMethods();
 
   if (!ok) {
-    redirect('/auth/login?redirectTo=/admin/payment-methods');
+    return <div className="text-red-500 text-lg">No se pudieron cargar los métodos de pago.</div>;
   }
 
   return <PaymentMethodsAdminClient paymentMethods={paymentMethods} />;
