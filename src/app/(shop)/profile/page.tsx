@@ -15,7 +15,7 @@ type ExtendedUser = {
 };
 
 export default async function ProfilePage() {
-    // Middleware garantiza autenticación, por lo que auth() debe estar disponible
+    // Layout garantiza autenticación, auth() siempre retorna una sesión válida
     const session = (await auth()) as { user: ExtendedUser };
 
     return (

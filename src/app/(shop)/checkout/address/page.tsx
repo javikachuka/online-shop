@@ -4,7 +4,7 @@ import { getCountries, getDefaultCompany, getUserAddress } from '@/actions';
 import { auth } from '@/auth.config';
 
 export default async function NamePage() {
-  // Middleware garantiza autenticación
+  // Layout garantiza autenticación
   const session = (await auth())!;
 
   const countries = await getCountries()
