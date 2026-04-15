@@ -17,10 +17,10 @@ export default async function CategoryPage({ params }: Props) {
 
     const orderData = await getOrderById(id);
     const companyData = await getDefaultCompany()
-    
-    
-    if(orderData.ok === false) {
-        redirect("/orders");
+    const redirectTo = `/orders/${id}`;
+
+    if (!orderData.ok && orderData.error === "User not authenticated") {
+        redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
 
     

@@ -15,11 +15,12 @@ interface Props {
 export default async function OrdersPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const redirectTo = searchParams.page ? `/orders?page=${searchParams.page}` : "/orders";
 
     const { orders, totalPages = 1, ok } = await getOrdersByUser(page);
 
     if (!ok) {
-      redirect("/auth/login");
+          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
 
     return (
