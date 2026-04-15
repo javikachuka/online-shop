@@ -1,13 +1,12 @@
 "use client";
 import { authenticate } from "@/actions";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom"; // <-- CORRECTO
 import { IoInformationOutline } from "react-icons/io5";
 import { useEffect } from 'react';
 
 const LoginForm = () => {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const rawRedirectTo = searchParams.get("redirectTo") || "/";
     const redirectTo = rawRedirectTo.startsWith("/") && !rawRedirectTo.startsWith("//")
@@ -17,9 +16,9 @@ const LoginForm = () => {
 
     useEffect(() => {
         if(state === "Success"){
-            router.replace(redirectTo);
+            window.location.replace(redirectTo);
         }
-    }, [state, redirectTo, router])
+    }, [state, redirectTo])
 
     return (
         <form action={formAction} className="flex flex-col">

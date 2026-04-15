@@ -19,8 +19,7 @@ export default async function ProfilePage() {
     const session = await auth() as { user: ExtendedUser } | null;
 
     if(!session?.user){
-        // redirect('/auth/login?returnTo=/perfil')
-        redirect('/')
+        redirect('/auth/login?redirectTo=/profile')
     }
 
     return (

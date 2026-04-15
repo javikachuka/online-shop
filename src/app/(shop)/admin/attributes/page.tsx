@@ -21,13 +21,14 @@ interface Props {
 export default async function AttributesPage({ searchParams }: Props) {
     // Aquí podrías obtener las órdenes del usuario
     const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const redirectTo = searchParams.page ? `/admin/attributes?page=${searchParams.page}` : '/admin/attributes';
 
     const { attributes, totalPages, ok } = await getPaginatedAttributes(page);
 
     
 
     if (!ok) {
-      redirect("/auth/login");
+          redirect(`/auth/login?redirectTo=${encodeURIComponent(redirectTo)}`);
     }
 
     return (

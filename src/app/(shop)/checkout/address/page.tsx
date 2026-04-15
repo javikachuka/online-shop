@@ -2,20 +2,18 @@ import { Title } from '@/components';
 import { AddressForm } from './ui/AddressForm';
 import { getCountries, getDefaultCompany, getUserAddress } from '@/actions';
 import { auth } from '@/auth.config';
+import { redirect } from 'next/navigation';
 
 export default async function NamePage() {
+  const session = await auth()
+
+  if(!session?.user){
+    redirect('/auth/login?redirectTo=/checkout/address')
+  }
 
   const countries = await getCountries()
 
-  const session = await auth()
-
   const company = await getDefaultCompany()
-
-  if(!session?.user){
-    return (
-      <h3 className='text-3xl'>500 - no hay session de usuario</h3>
-    )
-  }
 
   const userAddress = await getUserAddress(session.user.id) ?? undefined
 
