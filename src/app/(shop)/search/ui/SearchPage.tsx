@@ -2,15 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { 
   IoSearchOutline, 
   IoFunnelOutline, 
   IoGridOutline,
-  IoListOutline,
-  IoChevronDownOutline,
-  IoCloseOutline,
-  IoStarOutline
+  IoListOutline
 } from 'react-icons/io5';
 import { SearchResult, SearchFilters } from '@/actions';
 import { ProductGrid, ProductList } from '@/components';
@@ -26,7 +22,6 @@ export const SearchPage = ({ initialResult, initialFilters }: Props) => {
   
   const [result, setResult] = useState(initialResult);
   const [filters, setFilters] = useState(initialFilters);
-  const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -197,11 +192,11 @@ export const SearchPage = ({ initialResult, initialFilters }: Props) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-6">
           {/* Panel de filtros */}
           {showFilters && (
-            <div className="w-64 flex-shrink-0">
-              <div className="bg-white rounded-lg border p-6 sticky top-6">
+            <div className="w-full lg:w-64 lg:flex-shrink-0">
+              <div className="bg-white rounded-lg border p-6 lg:sticky lg:top-6">
                 <h3 className="font-semibold text-gray-900 mb-4">Filtros</h3>
 
                 {/* Filtro por categoría */}
@@ -301,7 +296,7 @@ export const SearchPage = ({ initialResult, initialFilters }: Props) => {
           )}
 
           {/* Contenido principal */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {result.products.length > 0 ? (
               <>
                 {/* Grid o Lista de productos */}

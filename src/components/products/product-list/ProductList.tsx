@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
-import { IoStarOutline } from 'react-icons/io5';
 import { ProductImage } from '@/components/product/product-image/ProductImage';
+import { currencyFormat } from '@/utils';
 
 interface Product {
   id: string;
@@ -28,13 +27,15 @@ export const ProductList = ({ products }: Props) => {
       {products.map((product) => (
         <div key={product.id} className="bg-white rounded-lg border hover:shadow-md transition-shadow">
           <Link href={`/product/${product.slug}`}>
-            <div className="flex gap-4 p-4">
+            <div className="flex flex-col sm:flex-row gap-4 p-4">
               {/* Imagen del producto */}
-              <div className="flex-shrink-0">
-                <div className="relative w-24 h-24 sm:w-32 sm:h-32">
+              <div className="flex-shrink-0 w-full sm:w-32">
+                <div className="relative w-full h-44 sm:h-32 overflow-hidden rounded-lg bg-gray-100">
                   <ProductImage
                     src={product.ProductImage?.[0]?.url}
                     alt={product.title}
+                    fill
+                    sizes="(max-width: 640px) 100vw, 128px"
                     className="object-cover rounded-lg"
                   />
                   {product.discountPercent > 0 && (
@@ -74,15 +75,15 @@ export const ProductList = ({ products }: Props) => {
                         {product.discountPercent > 0 ? (
                           <>
                             <span className="text-xl font-bold text-gray-900">
-                              ${(product.minPrice * (1 - product.discountPercent / 100)).toFixed(0)}
+                              {currencyFormat(product.minPrice * (1 - product.discountPercent / 100))}
                             </span>
                             <span className="text-sm text-gray-500 line-through">
-                              ${product.minPrice.toFixed(0)}
+                              {currencyFormat(product.minPrice)}
                             </span>
                           </>
                         ) : (
                           <span className="text-xl font-bold text-gray-900">
-                            ${product.minPrice.toFixed(0)}
+                            {currencyFormat(product.minPrice)}
                           </span>
                         )}
                       </div>
