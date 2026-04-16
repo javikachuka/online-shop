@@ -9,18 +9,32 @@ export const getProductBySlug = async (slug: string) => {
         const product = await prisma.product.findFirst({
             include: {
                 ProductImage: {
+                    orderBy: {
+                        sortOrder: 'asc'
+                    },
                     select:{
                         id: true,
                         url: true,
-                        variants: {
+                        sortOrder: true,
+                        variantAssignments: {
+                            orderBy: {
+                                sortOrder: 'asc'
+                            },
                             select: {
                                 id: true,
-                                attributes: {
+                                sortOrder: true,
+                                isPrimary: true,
+                                variant: {
                                     select: {
-                                        attributeId: true,
-                                        value: {
+                                        id: true,
+                                        attributes: {
                                             select: {
-                                                value: true
+                                                attributeId: true,
+                                                value: {
+                                                    select: {
+                                                        value: true
+                                                    }
+                                                }
                                             }
                                         }
                                     }

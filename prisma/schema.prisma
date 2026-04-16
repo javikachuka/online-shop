@@ -57,12 +57,14 @@ model Product {
 model ProductImage {
   id        String   @id @default(uuid())
   url       String
+  sortOrder Int      @default(0)
   product   Product  @relation(fields: [productId], references: [id])
   productId String
 
-  variants  ProductVariant[] 
+  variantAssignments ProductImageVariant[]
 
   @@index([productId])
+  @@index([productId, sortOrder])
 }
 
 model ProductVariant {
@@ -79,8 +81,21 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime? @updatedAt
   order     Int   @default(autoincrement())
-  // Relación con imágenes
-  images    ProductImage[]
+  imageAssignments ProductImageVariant[]
+}
+
+model ProductImageVariant {
+  id        String         @id @default(uuid())
+  image     ProductImage   @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  imageId   String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId String
+  sortOrder Int            @default(0)
+  isPrimary Boolean        @default(false)
+
+  @@unique([imageId, variantId])
+  @@index([variantId, sortOrder])
+  @@index([imageId])
 }
 
 model Attribute {

@@ -14,6 +14,7 @@ import { saveOrUpdateProduct } from "@/actions";
 import { Toaster, toast } from 'sonner';
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal/Modal"; // Asume que tienes un componente Modal reutilizable
+import { isGeneralProductImage } from "@/utils/product-image-utils";
 
 interface ComboAttribute {
     attributeId: string;
@@ -33,6 +34,11 @@ interface FormInputs {
     diffPrice: boolean;
     basePrice: string;
     isEnabled: boolean;
+}
+
+interface NewGroupedImage {
+    id: string;
+    file: File;
 }
 
 export const ProductForm = ({
@@ -68,7 +74,8 @@ export const ProductForm = ({
         // --- NUEVOS ESTADOS SENIOR ---
     const [visualAttributeId, setVisualAttributeId] = useState<string | null>(product?.imageGroupingAttributeId || null);
     // Agrupamos las imágenes nuevas por el valor del atributo (ej: { "Negro": [File, File], "Plata": [File] })
-    const [groupedNewImages, setGroupedNewImages] = useState<Record<string, File[]>>({});
+    const [groupedNewImages, setGroupedNewImages] = useState<Record<string, NewGroupedImage[]>>({});
+    const [existingImageOrderByGroup, setExistingImageOrderByGroup] = useState<Record<string, string[]>>({});
 
     const [selectedValuesForMatrix, setSelectedValuesForMatrix] = useState<Record<string, string[]>>({});
 
@@ -136,6 +143,65 @@ export const ProductForm = ({
         }
         setVisualAttributeId(product?.imageGroupingAttributeId || null);
     }, [product]);
+
+    useEffect(() => {
+        if (!product?.ProductImage) {
+            setExistingImageOrderByGroup({});
+            return;
+        }
+
+        const groupedImages = product.ProductImage.reduce<Record<string, ProductImage[]>>((accumulator, image) => {
+            let groupName = "General";
+
+            if (visualAttributeId && !isGeneralProductImage(image)) {
+                const matchingAssignment = image.variantAssignments?.find((assignment) =>
+                    assignment.variant.attributes.some((attribute) => attribute.attributeId === visualAttributeId)
+                );
+
+                groupName = matchingAssignment?.variant.attributes.find(
+                    (attribute) => attribute.attributeId === visualAttributeId
+                )?.value.value || "General";
+            }
+
+            if (!accumulator[groupName]) {
+                accumulator[groupName] = [];
+            }
+
+            accumulator[groupName].push(image);
+            return accumulator;
+        }, {});
+
+        const nextOrderByGroup = Object.fromEntries(
+            Object.entries(groupedImages).map(([groupName, images]) => {
+                const sortedImages = [...images].sort((left, right) => {
+                    if (groupName === "General") {
+                        return (left.sortOrder ?? 0) - (right.sortOrder ?? 0);
+                    }
+
+                    const leftAssignment = left.variantAssignments?.find((assignment) =>
+                        assignment.variant.attributes.some(
+                            (attribute) =>
+                                attribute.attributeId === visualAttributeId &&
+                                attribute.value.value === groupName
+                        )
+                    );
+                    const rightAssignment = right.variantAssignments?.find((assignment) =>
+                        assignment.variant.attributes.some(
+                            (attribute) =>
+                                attribute.attributeId === visualAttributeId &&
+                                attribute.value.value === groupName
+                        )
+                    );
+
+                    return (leftAssignment?.sortOrder ?? left.sortOrder ?? 0) - (rightAssignment?.sortOrder ?? right.sortOrder ?? 0);
+                });
+
+                return [groupName, sortedImages.map((image) => image.id)];
+            })
+        );
+
+        setExistingImageOrderByGroup(nextOrderByGroup);
+    }, [product?.ProductImage, visualAttributeId]);
 
     // Estado para atributos seleccionados
     const [selectedAttributeIds, setSelectedAttributeIds] = useState<string[]>(
@@ -205,6 +271,14 @@ export const ProductForm = ({
     // Eliminar imagen existente (marcar para borrar)
     const handleRemoveImage = (imageId: string) => {
         setImagesToDelete(prev => [...prev, imageId]);
+        setExistingImageOrderByGroup(prev =>
+            Object.fromEntries(
+                Object.entries(prev).map(([groupName, imageIds]) => [
+                    groupName,
+                    imageIds.filter((id) => id !== imageId)
+                ])
+            )
+        );
     };
 
         // Manejador para cuando cambian las imágenes de un grupo específico
@@ -226,17 +300,58 @@ export const ProductForm = ({
 
         if (fileArray.length === 0) return;
 
+        const newImages = fileArray.map((file, index) => ({
+            id: `${groupValue}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+            file,
+        }));
+
         setGroupedNewImages(prev => ({
             ...prev,
-            [groupValue]: [...(prev[groupValue] || []), ...fileArray]
+            [groupValue]: [...(prev[groupValue] || []), ...newImages]
         }));
     };
 
-    const removeImageFromGroup = (groupValue: string, index: number) => {
+    const removeImageFromGroup = (groupValue: string, imageId: string) => {
         setGroupedNewImages(prev => ({
             ...prev,
-            [groupValue]: prev[groupValue].filter((_, i) => i !== index)
+            [groupValue]: (prev[groupValue] || []).filter((image) => image.id !== imageId)
         }));
+    };
+
+    const moveExistingImage = (groupValue: string, imageId: string, direction: 'up' | 'down') => {
+        setExistingImageOrderByGroup((prev) => {
+            const groupImages = [...(prev[groupValue] || [])];
+            const currentIndex = groupImages.indexOf(imageId);
+            if (currentIndex === -1) return prev;
+
+            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= groupImages.length) return prev;
+
+            [groupImages[currentIndex], groupImages[targetIndex]] = [groupImages[targetIndex], groupImages[currentIndex]];
+
+            return {
+                ...prev,
+                [groupValue]: groupImages,
+            };
+        });
+    };
+
+    const moveNewImage = (groupValue: string, imageId: string, direction: 'up' | 'down') => {
+        setGroupedNewImages((prev) => {
+            const groupImages = [...(prev[groupValue] || [])];
+            const currentIndex = groupImages.findIndex((image) => image.id === imageId);
+            if (currentIndex === -1) return prev;
+
+            const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= groupImages.length) return prev;
+
+            [groupImages[currentIndex], groupImages[targetIndex]] = [groupImages[targetIndex], groupImages[currentIndex]];
+
+            return {
+                ...prev,
+                [groupValue]: groupImages,
+            };
+        });
     };
 
     // Validar que todos los variantes tengan los mismos tipos de atributos
@@ -489,11 +604,12 @@ export const ProductForm = ({
         formData.append('variants', JSON.stringify(cleanVariants));
         // Solo IDs de imágenes a borrar
         imagesToDelete.forEach(id => formData.append('imagesToDelete[]', id));
+        formData.append('existingImageOrderByGroup', JSON.stringify(existingImageOrderByGroup));
 
                 // Enviamos la relación de qué imagen pertenece a qué grupo
         // Estructura: groupedNewImages = { "Rojo": [File1, File2], "Azul": [File3] }
-        Object.entries(groupedNewImages).forEach(([groupValue, files]) => {
-            files.forEach(file => {
+        Object.entries(groupedNewImages).forEach(([groupValue, images]) => {
+            images.forEach(({ file }) => {
                 formData.append(`images_${groupValue}`, file); 
             });
         });
@@ -560,33 +676,46 @@ export const ProductForm = ({
 
         // Si el grupo es "General", mostramos imágenes que NO tienen variantes asociadas
         if (groupName === "General") {
-            return product.ProductImage.filter(img => !img.variants || img.variants.length === 0);
+            return product.ProductImage.filter((img) => isGeneralProductImage(img));
         }
 
         if (!visualAttributeId) return [];
 
         // Si hay un atributo visual, filtramos imágenes cuya variante coincida con el nombre del grupo
         return product.ProductImage.filter(img => 
-            img.variants?.some(v => 
-                v.attributes.some(attr => attr.attributeId === visualAttributeId && attr.value.value === groupName)
+            img.variantAssignments?.some(assignment => 
+                assignment.variant.attributes.some(attr => attr.attributeId === visualAttributeId && attr.value.value === groupName)
             )
         );
     };
 
     const getVisibleExistingImagesByGroup = (groupName: string) => {
-        return getExistingImagesByGroup(groupName).filter(img => !imagesToDelete.includes(img.id));
+        const existingImages = getExistingImagesByGroup(groupName).filter(img => !imagesToDelete.includes(img.id));
+        const orderForGroup = existingImageOrderByGroup[groupName] || existingImages.map((image) => image.id);
+
+        return orderForGroup
+            .map((imageId) => existingImages.find((image) => image.id === imageId))
+            .filter((image): image is ProductImage => Boolean(image));
     };
 
     const variantGroups = Array.from(new Set(variants.map(v => 
         v.attributes.find(a => a.attributeId === visualAttributeId)?.value || "General"
     )));
 
+    const groupsWithExistingImages = Object.keys(existingImageOrderByGroup).filter(
+        (groupName) => getVisibleExistingImagesByGroup(groupName).length > 0
+    );
+    const groupsWithNewImages = Object.entries(groupedNewImages)
+        .filter(([, images]) => images.length > 0)
+        .map(([groupName]) => groupName);
+
     const groupsToRender = visualAttributeId
         ? Array.from(new Set([
             ...variantGroups,
-            ...(getVisibleExistingImagesByGroup("General").length > 0 ? ["General"] : []),
+            ...groupsWithExistingImages,
+            ...groupsWithNewImages,
         ]))
-        : ["General"];
+        : Array.from(new Set(["General", ...groupsWithNewImages]));
 
     return (
         <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 mb-16 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
@@ -872,13 +1001,31 @@ export const ProductForm = ({
                                 <div className="grid grid-cols-4 gap-2">
                                     
                                     {/* A. IMÁGENES QUE YA ESTÁN EN EL SERVIDOR */}
-                                    {getVisibleExistingImagesByGroup(groupName).map((img) => (
+                                    {getVisibleExistingImagesByGroup(groupName).map((img, index, groupImages) => (
                                         <div key={img.id} className="relative aspect-square">
                                         <img 
                                             src={img.url} 
                                             className="w-full h-full object-cover rounded-md border-2 border-blue-200" 
                                             alt="server-image"
                                         />
+                                        <div className="absolute left-1 top-1 flex gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => moveExistingImage(groupName, img.id, 'up')}
+                                                disabled={index === 0}
+                                                className="bg-white/90 text-xs px-1 rounded disabled:opacity-40"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => moveExistingImage(groupName, img.id, 'down')}
+                                                disabled={index === groupImages.length - 1}
+                                                className="bg-white/90 text-xs px-1 rounded disabled:opacity-40"
+                                            >
+                                                ↓
+                                            </button>
+                                        </div>
                                         <button 
                                             type="button"
                                             onClick={() => handleRemoveImage(img.id)}
@@ -893,16 +1040,34 @@ export const ProductForm = ({
 
                                 {/* Preview de imágenes del grupo */}
                                 <div className="grid grid-cols-4 gap-2">
-                                    {groupedNewImages[groupName]?.map((file, idx) => (
-                                        <div key={idx} className="relative aspect-square">
+                                    {groupedNewImages[groupName]?.map((image, idx, groupImages) => (
+                                        <div key={image.id} className="relative aspect-square">
                                         <img 
-                                            src={URL.createObjectURL(file)} 
+                                            src={URL.createObjectURL(image.file)} 
                                             className="w-full h-full object-cover rounded-md border" 
                                             alt="preview"
                                         />
+                                        <div className="absolute left-1 top-1 flex gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => moveNewImage(groupName, image.id, 'up')}
+                                                disabled={idx === 0}
+                                                className="bg-white/90 text-xs px-1 rounded disabled:opacity-40"
+                                            >
+                                                ↑
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => moveNewImage(groupName, image.id, 'down')}
+                                                disabled={idx === groupImages.length - 1}
+                                                className="bg-white/90 text-xs px-1 rounded disabled:opacity-40"
+                                            >
+                                                ↓
+                                            </button>
+                                        </div>
                                         <button 
                                             type="button"
-                                            onClick={() => removeImageFromGroup(groupName, idx)}
+                                            onClick={() => removeImageFromGroup(groupName, image.id)}
                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-md"
                                         >
                                             <IoCloseOutline size={12}/>

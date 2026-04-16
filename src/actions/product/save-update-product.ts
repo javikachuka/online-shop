@@ -43,6 +43,9 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
     const categories = formData.getAll("categories[]") as string[];
     const variants = JSON.parse(formData.get("variants") as string);
     const imagesToDelete = formData.getAll("imagesToDelete[]") as string[];
+    const existingImageOrderByGroup = JSON.parse(
+        (formData.get("existingImageOrderByGroup") as string | null) ?? "{}"
+    ) as Record<string, string[]>;
 
     // --- 1. PROCESAR IMÁGENES DEL FORMDATA ---
     const imageGroups: Record<string, File[]> = {};
@@ -225,8 +228,141 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                 });
             }
 
+            const groupVariantIdsCache = new Map<string, string[]>();
+
+            const getVariantIdsForGroup = async (groupName: string) => {
+                if (groupName === "General" || !visualAttributeId) {
+                    return [] as string[];
+                }
+
+                if (groupVariantIdsCache.has(groupName)) {
+                    return groupVariantIdsCache.get(groupName)!;
+                }
+
+                const variantsInGroup = await tx.productVariant.findMany({
+                    where: {
+                        productId: currentProduct.id,
+                        attributes: {
+                            some: {
+                                attributeId: visualAttributeId,
+                                value: { value: groupName }
+                            }
+                        }
+                    },
+                    select: { id: true }
+                });
+
+                const variantIds = variantsInGroup.map((variant) => variant.id);
+                groupVariantIdsCache.set(groupName, variantIds);
+                return variantIds;
+            };
+
+            const getExistingImageIdsForGroup = async (groupName: string) => {
+                const explicitOrder = (existingImageOrderByGroup[groupName] ?? []).filter(
+                    (imageId) => !imagesToDelete.includes(imageId)
+                );
+
+                if (explicitOrder.length > 0) {
+                    return explicitOrder;
+                }
+
+                if (groupName === "General" || !visualAttributeId) {
+                    const generalImages = await tx.productImage.findMany({
+                        where: {
+                            productId: currentProduct.id,
+                            id: { notIn: imagesToDelete },
+                            variantAssignments: {
+                                none: {}
+                            }
+                        },
+                        orderBy: {
+                            sortOrder: 'asc'
+                        },
+                        select: { id: true }
+                    });
+
+                    return generalImages.map((image) => image.id);
+                }
+
+                const variantIds = await getVariantIdsForGroup(groupName);
+                if (variantIds.length === 0) {
+                    return [] as string[];
+                }
+
+                const assignments = await tx.productImageVariant.findMany({
+                    where: {
+                        variantId: { in: variantIds },
+                        image: {
+                            productId: currentProduct.id,
+                            id: { notIn: imagesToDelete }
+                        }
+                    },
+                    orderBy: [
+                        { sortOrder: 'asc' },
+                        { image: { sortOrder: 'asc' } }
+                    ],
+                    select: { imageId: true }
+                });
+
+                return Array.from(new Set(assignments.map((assignment) => assignment.imageId)));
+            };
+
+            for (const [groupName, orderedImageIds] of Object.entries(existingImageOrderByGroup)) {
+                const imageIds = orderedImageIds.filter((imageId) => !imagesToDelete.includes(imageId));
+
+                if (groupName === "General" || !visualAttributeId) {
+                    for (let index = 0; index < imageIds.length; index++) {
+                        const imageId = imageIds[index];
+
+                        await tx.productImage.updateMany({
+                            where: {
+                                id: imageId,
+                                productId: currentProduct.id,
+                            },
+                            data: {
+                                sortOrder: index,
+                            }
+                        });
+                    }
+
+                    continue;
+                }
+
+                const variantIds = await getVariantIdsForGroup(groupName);
+                if (variantIds.length === 0) continue;
+
+                for (let index = 0; index < imageIds.length; index++) {
+                    const imageId = imageIds[index];
+
+                    await tx.productImageVariant.updateMany({
+                        where: {
+                            imageId,
+                            variantId: { in: variantIds }
+                        },
+                        data: {
+                            sortOrder: index,
+                        }
+                    });
+                }
+            }
+
+            const productImageAggregate = await tx.productImage.aggregate({
+                where: {
+                    productId: currentProduct.id,
+                    id: { notIn: imagesToDelete }
+                },
+                _max: {
+                    sortOrder: true
+                }
+            });
+
+            let nextGlobalSortOrder = (productImageAggregate._max.sortOrder ?? -1) + 1;
+
             // --- 3. SUBIDA Y VINCULACIÓN DE IMÁGENES ---
             for (const [groupName, files] of Object.entries(imageGroups)) {
+                const existingImageIdsForGroup = await getExistingImageIdsForGroup(groupName);
+                const groupSortOffset = existingImageIdsForGroup.length;
+
                 // Subir a Cloudinary (Usa tu función helper actual)
                 // const imageUrls = await uploadImages(files); 
                 
@@ -246,43 +382,31 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                 
                 const uploadResults = await Promise.all(uploadPromises);
 
-                for (const res of uploadResults) {
+                const variantIdsInGroup = await getVariantIdsForGroup(groupName);
+
+                for (let index = 0; index < uploadResults.length; index++) {
+                    const res = uploadResults[index];
+
                     // Creamos el registro de ProductImage
                     const newImage = await tx.productImage.create({
                         data: {
                             url: res.secure_url,
                             productId: currentProduct.id,
+                            sortOrder: nextGlobalSortOrder++,
                         }
                     });
 
                     // Si la imagen pertenece a un grupo visual (ej: "Blanco")
-                    if (groupName !== "General" && visualAttributeId) {
-                        // Buscamos las variantes que acabamos de crear/actualizar 
-                        // que coinciden con ese valor de atributo
-                        const variantsInGroup = await tx.productVariant.findMany({
-                            where: {
-                                productId: currentProduct.id,
-                                attributes: {
-                                    some: {
-                                        attributeId: visualAttributeId,
-                                        value: { value: groupName }
-                                    }
-                                }
-                            }
+                    if (groupName !== "General" && visualAttributeId && variantIdsInGroup.length > 0) {
+                        await tx.productImageVariant.createMany({
+                            data: variantIdsInGroup.map((variantId) => ({
+                                imageId: newImage.id,
+                                variantId,
+                                sortOrder: groupSortOffset + index,
+                            })),
+                            skipDuplicates: true,
                         });
-
-                        // Conectamos la imagen a esas variantes (M:N)
-                        if (variantsInGroup.length > 0) {
-                            await tx.productImage.update({
-                                where: { id: newImage.id },
-                                data: {
-                                    variants: {
-                                        connect: variantsInGroup.map(v => ({ id: v.id }))
-                                    }
-                                }
-                            });
                         }
-                    }
                 }
             }
 

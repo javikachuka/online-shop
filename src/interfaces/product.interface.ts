@@ -1,15 +1,25 @@
+export interface ProductImageVariantReference {
+    id: string;
+    attributes: {
+        attributeId: string;
+        value: {
+            value: string;
+        };
+    }[];
+}
+
+export interface ProductImageVariantAssignment {
+    id: string;
+    sortOrder: number;
+    isPrimary?: boolean;
+    variant: ProductImageVariantReference;
+}
+
 export interface ProductImage {
     id: string;
     url: string;
-    variants?: {
-        id: string;
-        attributes: {
-            attributeId: string;
-            value: {
-                value: string;
-            };
-        }[];
-    }[];
+    sortOrder?: number;
+    variantAssignments?: ProductImageVariantAssignment[];
 }
 
 export interface AttributeValue {

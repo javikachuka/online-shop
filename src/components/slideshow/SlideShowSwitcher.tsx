@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ProductImage, ProductVariant } from "@/interfaces"
 import dynamic from "next/dynamic"
+import { getImagesForVariant } from "@/utils/product-image-utils"
 
 const ProductSlidesShow = dynamic(() =>
     import("./ProductSlidesShow").then((mod) => mod.ProductSlidesShow)
@@ -29,34 +30,12 @@ export const SlideShowSwitcher = ({
     const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
     const filteredImages = useMemo(() => {
-        if (!imageGroupingAttributeId || !selectedVariantId || variants.length === 0) {
-            return images
-        }
-
-        const selectedVariant = variants.find((variant) => variant.id === selectedVariantId)
-        if (!selectedVariant) return images
-
-        const selectedVisualValue = selectedVariant.attributes.find(
-            (attr) => attr.attributeId === imageGroupingAttributeId
-        )?.value?.value
-
-        if (!selectedVisualValue) return images
-
-        const imagesForVariant = images.filter((image) => {
-            if (!image.variants || image.variants.length === 0) return false
-
-            return image.variants.some((variantRef) => {
-                if (variantRef.id === selectedVariantId) return true
-
-                return variantRef.attributes?.some(
-                    (attribute) =>
-                        attribute.attributeId === imageGroupingAttributeId &&
-                        attribute.value?.value === selectedVisualValue
-                )
-            })
-        })
-
-        return imagesForVariant.length > 0 ? imagesForVariant : images
+        return getImagesForVariant(
+            images,
+            selectedVariantId,
+            imageGroupingAttributeId,
+            variants
+        )
     }, [images, imageGroupingAttributeId, selectedVariantId, variants])
 
     const sliderKey = filteredImages.map((image) => image.id).join('-')

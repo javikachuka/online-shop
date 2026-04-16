@@ -44,17 +44,30 @@ export const getOrderByIdAdmin = async (id: string) => {
                             slug: true,
                             imageGroupingAttributeId: true,
                             ProductImage: {
+                                orderBy: {
+                                    sortOrder: 'asc'
+                                },
                                 select: {
                                     id: true,
                                     url: true,
-                                    variants: {
+                                    sortOrder: true,
+                                    variantAssignments: {
+                                        orderBy: {
+                                            sortOrder: 'asc'
+                                        },
                                         select: {
                                             id: true,
-                                            attributes: {
+                                            sortOrder: true,
+                                            variant: {
                                                 select: {
-                                                    attributeId: true,
-                                                    value: {
-                                                        select: { value: true }
+                                                    id: true,
+                                                    attributes: {
+                                                        select: {
+                                                            attributeId: true,
+                                                            value: {
+                                                                select: { value: true }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
