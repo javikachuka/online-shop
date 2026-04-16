@@ -55,6 +55,10 @@ export const searchProducts = async (filters: SearchFilters = {}): Promise<Searc
   const validation = validateSearchTerm(query);
   const searchQuery = validation.cleanTerm;
   const normalizedQuery = normalizeSearchText(searchQuery);
+  const searchTokens = normalizedQuery
+    .split(' ')
+    .map(token => token.trim())
+    .filter(token => token.length > 1);
 
   try {
     // Construir condiciones de filtro
@@ -69,36 +73,71 @@ export const searchProducts = async (filters: SearchFilters = {}): Promise<Searc
 
     // Filtro de texto
     if (searchQuery && validation.isValid) {
-      whereConditions.OR = [
-        {
-          title: {
-            contains: normalizedQuery,
-            mode: 'insensitive'
-          }
-        },
-        {
-          description: {
-            contains: normalizedQuery,
-            mode: 'insensitive'
-          }
-        },
-        {
-          tags: {
-            has: normalizedQuery
-          }
-        },
-        {
-          categories: {
-            some: {
-              category: {
-                name: {
-                  contains: normalizedQuery,
-                  mode: 'insensitive'
+      const buildTokenConditions = (token: string) => ({
+        OR: [
+          {
+            title: {
+              contains: token,
+              mode: 'insensitive'
+            }
+          },
+          {
+            description: {
+              contains: token,
+              mode: 'insensitive'
+            }
+          },
+          {
+            tags: {
+              has: token
+            }
+          },
+          {
+            categories: {
+              some: {
+                category: {
+                  name: {
+                    contains: token,
+                    mode: 'insensitive'
+                  }
+                }
+              }
+            }
+          },
+          {
+            variants: {
+              some: {
+                attributes: {
+                  some: {
+                    OR: [
+                      {
+                        attribute: {
+                          name: {
+                            contains: token,
+                            mode: 'insensitive'
+                          }
+                        }
+                      },
+                      {
+                        value: {
+                          value: {
+                            contains: token,
+                            mode: 'insensitive'
+                          }
+                        }
+                      }
+                    ]
+                  }
                 }
               }
             }
           }
-        }
+        ]
+      });
+
+      whereConditions.AND = [
+        ...(whereConditions.AND || []),
+        ...searchTokens.map(buildTokenConditions)
       ];
     }
 
@@ -220,8 +259,32 @@ export const searchProducts = async (filters: SearchFilters = {}): Promise<Searc
     let sortedProducts = products;
     if (sortBy === 'relevance' && searchQuery && validation.isValid) {
       sortedProducts = products.sort((a, b) => {
-        const relevanceA = calculateRelevance(a.title + ' ' + a.description, searchQuery);
-        const relevanceB = calculateRelevance(b.title + ' ' + b.description, searchQuery);
+        const searchableTextA = [
+          a.title,
+          a.description,
+          ...(a.categories?.map((categoryRelation: any) => categoryRelation.category?.name || '') || []),
+          ...(a.variants?.flatMap((variant: any) =>
+            variant.attributes?.flatMap((attribute: any) => [
+              attribute.attribute?.name || '',
+              attribute.value?.value || ''
+            ]) || []
+          ) || [])
+        ].join(' ');
+
+        const searchableTextB = [
+          b.title,
+          b.description,
+          ...(b.categories?.map((categoryRelation: any) => categoryRelation.category?.name || '') || []),
+          ...(b.variants?.flatMap((variant: any) =>
+            variant.attributes?.flatMap((attribute: any) => [
+              attribute.attribute?.name || '',
+              attribute.value?.value || ''
+            ]) || []
+          ) || [])
+        ].join(' ');
+
+        const relevanceA = calculateRelevance(searchableTextA, searchQuery);
+        const relevanceB = calculateRelevance(searchableTextB, searchQuery);
         return relevanceB - relevanceA;
       });
     }
@@ -398,19 +461,53 @@ export const getSearchSuggestions = async (query: string, limit: number = 5) => 
     const products = await prisma.product.findMany({
       where: {
         isEnabled: true,
-        OR: [
-          {
-            title: {
-              contains: normalizedQuery,
-              mode: 'insensitive'
-            }
-          },
-          {
-            tags: {
-              has: normalizedQuery
-            }
-          }
-        ]
+        AND: normalizedQuery
+          .split(' ')
+          .map(token => token.trim())
+          .filter(token => token.length > 1)
+          .map(token => ({
+            OR: [
+              {
+                title: {
+                  contains: token,
+                  mode: 'insensitive'
+                }
+              },
+              {
+                tags: {
+                  has: token
+                }
+              },
+              {
+                variants: {
+                  some: {
+                    attributes: {
+                      some: {
+                        OR: [
+                          {
+                            attribute: {
+                              name: {
+                                contains: token,
+                                mode: 'insensitive'
+                              }
+                            }
+                          },
+                          {
+                            value: {
+                              value: {
+                                contains: token,
+                                mode: 'insensitive'
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }))
       },
       select: {
         id: true,
