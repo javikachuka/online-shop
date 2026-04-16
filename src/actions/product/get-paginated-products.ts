@@ -29,6 +29,9 @@ export const getPaginatedProducts = async (page: number = 1, take: number = 10) 
             take,
             include: {
                 ProductImage: {
+                    orderBy: {
+                        sortOrder: 'asc'
+                    },
                     take: 1
                 },
                 variants: {
@@ -45,7 +48,10 @@ export const getPaginatedProducts = async (page: number = 1, take: number = 10) 
                     }
                 }
             },
-            orderBy: { title: 'asc' }
+            orderBy: [
+                { createdAt: 'desc' },
+                { title: 'asc' }
+            ]
         });
 
         const totalCount = await prisma.product.count({});

@@ -23,8 +23,15 @@ export const getPaginatedProductsWithImages = async ({page = 1, take = 12}: Pagi
             where: {
                 isEnabled: true
             },
+            orderBy: [
+                { createdAt: 'desc' },
+                { title: 'asc' }
+            ],
             include:{
                 ProductImage:{
+                    orderBy: {
+                        sortOrder: 'asc'
+                    },
                     take: 2,
                     select:{
                         id: true,
