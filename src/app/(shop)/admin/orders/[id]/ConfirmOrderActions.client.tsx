@@ -43,7 +43,7 @@ export function ConfirmOrderActions({ orderId, isPaid, status, orderStatus }: { 
     // Determinar qué botones mostrar basado en el estado
     const canConfirm = !isPaid && status !== 'cancelled' && orderStatus !== 'delivered';
     const canCancel = !isPaid && status !== 'cancelled' && orderStatus !== 'delivered';
-    const canMarkAsDelivered = isPaid && status === 'paid' && orderStatus !== 'delivered';
+    const canMarkAsDelivered = isPaid && status === 'approved' && orderStatus !== 'delivered';
 
     return (
         <>
