@@ -1,10 +1,24 @@
 export const revalidate = 60; //60 seg
 
-
+import type { Metadata } from 'next';
 import { getPaginatedProductsWithImages } from "@/actions";
 import { Pagination, ProductGrid, Title } from "@/components";
 
-// const products = initialData.products
+export const metadata: Metadata = {
+  title: 'Accesorios para celular — Fundas, Cargadores y más',
+  description:
+    'Comprá accesorios para celular en iOS Pro: fundas para iPhone, cargadores, auriculares y protectores de pantalla. Envíos a todo Argentina.',
+  openGraph: {
+    title: 'iOS Pro — Accesorios para celular en Argentina',
+    description:
+      'Fundas, cargadores, auriculares y protectores de pantalla para iPhone y Samsung. Envíos a todo el país.',
+    url: '/',
+    type: 'website',
+  },
+  alternates: {
+    canonical: '/',
+  },
+};
 
 interface Props {
   searchParams: {
@@ -31,8 +45,8 @@ export default async function ShopPage({searchParams} : Props) {
   return (
     <>
       <Title 
-        title="Tienda"
-        subtitle="Todos los productos"
+        title="Accesorios para celular"
+        subtitle="Fundas, cargadores, auriculares y más"
         className="mb-2"
       />
 
