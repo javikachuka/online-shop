@@ -59,7 +59,7 @@ export const processApprovedPayment = async (paymentId: string): Promise<Process
                 ok: true,
                 orderId: existingOrderByTransaction.id,
                 status: 'already_processed',
-                message: 'Pago ya procesado anteriormente',
+                message: 'Tu pago ya fue confirmado y tu pedido está listo para ser consultado.',
                 clearCart: true // 🧹 Señal para limpiar carrito
             };
         }

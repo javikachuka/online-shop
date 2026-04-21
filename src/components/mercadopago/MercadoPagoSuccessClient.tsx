@@ -14,6 +14,7 @@ type OrderStatus = 'checking' | 'approved' | 'pending' | 'rejected' | 'cancelled
 
 export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>('checking');
+  const [processedOrderId, setProcessedOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string>('Procesando tu pago...');
   const router = useRouter();
@@ -35,22 +36,27 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
         }
 
         const { status: paymentStatus, orderId, message: resultMessage, clearCart } = result;
+        setProcessedOrderId(orderId || null);
         
         // Procesar según el estado del pago
         switch (paymentStatus) {
           case 'approved':
           case 'already_processed':
             setOrderStatus('approved');
-            setMessage('¡Pago procesado exitosamente!');
+            setMessage(
+              resultMessage ||
+              (paymentStatus === 'already_processed'
+                ? 'Confirmamos tu pago y tu pedido ya quedó registrado. Te estamos llevando al detalle de la compra.'
+                : 'Tu pago fue aprobado y tu pedido ya quedó registrado.')
+            );
             
             // 🧹 Limpiar carrito si se indica desde el server o siempre en caso de éxito
             if (clearCart || paymentStatus === 'approved' || paymentStatus === 'already_processed') {
-                clearCartStorage()
+                clearCartStorage();
                 localStorage.removeItem('cart');
+                localStorage.removeItem('shopping-cart');
                 sessionStorage.removeItem('current_session_token');
                 sessionStorage.removeItem('order_expires_at');
-              // TODO: También limpiar store si tienes uno
-              // clearCartStore(); 
             }
             
             // Redirigir a la página de la orden
@@ -160,20 +166,12 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
              orderStatus === 'cancelled' ? 'Pago cancelado' : 'Error en el pago'}
           </h2>
           <p className="text-red-600 mb-4">{error || message}</p>
-          <div className="space-y-2">
-            <button 
-              onClick={() => router.push('/checkout')}
-              className="btn-primary w-full"
-            >
-              Volver al checkout
-            </button>
-            <button 
-              onClick={() => router.push('/orders')}
-              className="btn-secondary w-full"
-            >
-              Ver mis pedidos
-            </button>
-          </div>
+          <button 
+            onClick={() => router.push(processedOrderId ? `/orders/${processedOrderId}` : '/orders')}
+            className="btn-secondary w-full"
+          >
+            {processedOrderId ? 'Ver mi pedido' : 'Ver mis pedidos'}
+          </button>
         </div>
       </div>
     );
@@ -191,6 +189,14 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
         <h2 className="text-xl font-semibold text-green-800 mb-2">¡Pago exitoso!</h2>
         <p className="text-green-600 mb-4">{message}</p>
         <p className="text-sm text-gray-500">Redirigiendo a tu pedido...</p>
+        {processedOrderId && (
+          <button
+            onClick={() => router.replace(`/orders/${processedOrderId}`)}
+            className="btn-primary mt-4 w-full"
+          >
+            Ver mi pedido
+          </button>
+        )}
       </div>
     </div>
   );

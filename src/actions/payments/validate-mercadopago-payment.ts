@@ -178,9 +178,16 @@ export const validateMercadoPagoPayment = async (paymentId: string): Promise<Pay
 
             if (existingTransaction) {
                 return {
-                    ok: false,
-                    error: 'Payment already processed',
-                    message: 'Este pago ya fue procesado anteriormente'
+                    ok: true,
+                    orderId: existingTransaction.id,
+                    message: 'Tu pago ya había sido confirmado previamente',
+                    paymentData: {
+                        status: 'approved',
+                        amount: receivedAmount,
+                        paymentId: mpPaymentId.toString(),
+                        dateApproved: date_approved || undefined,
+                        transactionId: mpPaymentId.toString()
+                    }
                 };
             }
         }
