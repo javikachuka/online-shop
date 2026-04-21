@@ -21,6 +21,7 @@ model Category {
   subcategories Category[] @relation("Subcategories")
   products    ProductCategory[]
   isEnabled   Boolean     @default(false)
+  isExpanded  Boolean     @default(false)
   description   String?
   slug   String
 }

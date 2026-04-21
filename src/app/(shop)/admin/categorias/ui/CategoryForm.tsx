@@ -17,6 +17,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ category, categories
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEnabled, setIsEnabled] = useState(category?.isEnabled ?? true);
+  const [isExpanded, setIsExpanded] = useState(category?.isExpanded ?? false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +30,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ category, categories
       description,
       parentId: parentId || undefined,
       isEnabled,
+      isExpanded,
     });
     setLoading(false);
     
@@ -107,6 +109,17 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ category, categories
         >
           <option value="enabled">Habilitada</option>
           <option value="disabled">Deshabilitada</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-xs font-semibold mb-1">Menú desplegado</label>
+        <select
+          className="p-2 border rounded-md w-full"
+          value={isExpanded ? "expanded" : "collapsed"}
+          onChange={e => setIsExpanded(e.target.value === "expanded")}
+        >
+          <option value="collapsed">No</option>
+          <option value="expanded">Sí</option>
         </select>
       </div>
       <div className="flex gap-2 justify-end mt-4">

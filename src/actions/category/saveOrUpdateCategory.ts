@@ -1,15 +1,16 @@
 'use server'
 
-import {prisma} from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export const saveOrUpdateCategory = async ({ id, name, slug, description, parentId, isEnabled }: {
+export const saveOrUpdateCategory = async ({ id, name, slug, description, parentId, isEnabled, isExpanded }: {
   id?: string;
   name: string;
   slug: string;
   description?: string;
   parentId?: string;
   isEnabled?: boolean;
+  isExpanded?: boolean;
 }) => {
   try {
     if (id) {
@@ -22,6 +23,7 @@ export const saveOrUpdateCategory = async ({ id, name, slug, description, parent
           description,
           parentId: parentId || null,
           isEnabled: isEnabled ?? true,
+          isExpanded: isExpanded ?? false,
         },
       });
       return { ok: true, category };
@@ -34,6 +36,7 @@ export const saveOrUpdateCategory = async ({ id, name, slug, description, parent
           description,
           parentId: parentId || null,
           isEnabled: isEnabled ?? true,
+          isExpanded: isExpanded ?? false,
         },
       });
       revalidatePath('/admin/categorias');

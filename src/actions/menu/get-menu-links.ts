@@ -5,20 +5,36 @@ import {prisma} from "@/lib/prisma";
 
 export const getMenuLinks = async () => {
     try {
-        const menuLinks = await prisma.category.findMany({
-            where: { isEnabled: true, parentId: null },
-            orderBy: { name: 'asc' },
-            include: {
-                subcategories: {
-                    where: { isEnabled: true },
-                    include: {
-                        subcategories: {
-                            where: { isEnabled: true }
-                        }
-                    }
-                }
-            }
+        const enabledCategories = await prisma.category.findMany({
+            where: { isEnabled: true },
+            orderBy: { name: 'asc' }
         });
+
+        type MenuCategoryNode = (typeof enabledCategories)[number] & {
+            subcategories: MenuCategoryNode[];
+        };
+
+        const groupedByParent = enabledCategories.reduce<Record<string, typeof enabledCategories>>((acc, category) => {
+            const key = category.parentId ?? 'root';
+            if (!acc[key]) {
+                acc[key] = [];
+            }
+
+            acc[key].push(category);
+            return acc;
+        }, {});
+
+        const buildTree = (parentId: string | null): MenuCategoryNode[] => {
+            const key = parentId ?? 'root';
+            const children = groupedByParent[key] ?? [];
+
+            return children.map((category) => ({
+                ...category,
+                subcategories: buildTree(category.id)
+            }));
+        };
+
+        const menuLinks = buildTree(null);
 
         return {
             ok: true,

@@ -1,7 +1,7 @@
 "use client";
 import { Category } from "@/interfaces";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IoCaretDown } from "react-icons/io5";
 
 // Componente recursivo para renderizar categorías y subcategorías en el sidebar
@@ -16,7 +16,11 @@ export const SidebarCategory = ({
     parentSlugs = [],
     onClick
 }: SidebarCategoryProps) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(category.isExpanded);
+
+    useEffect(() => {
+        setIsOpen(category.isExpanded);
+    }, [category.isExpanded]);
     
     const currentSlugs = [...parentSlugs, category.slug];
     const hasChildren =

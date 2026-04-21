@@ -37,13 +37,14 @@ export function CategoriasAdminClient({ categories, totalPages }: { categories: 
                                 <th className="text-sm font-medium text-gray-900 px-6 py-4 text-left">Nombre</th>
                                 <th className="text-sm font-medium text-gray-900 px-6 py-4 text-left">Padre</th>
                                 <th className="text-sm font-medium text-gray-900 px-6 py-4 text-left">Estado</th>
+                                <th className="text-sm font-medium text-gray-900 px-6 py-4 text-left">Menú</th>
                                 <th className="text-sm font-medium text-gray-900 px-6 py-4 text-left">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {categories?.length === 0 && (
                                 <tr className="bg-white border-b transition duration-300 ease-in-out hover:bg-gray-100">
-                                    <td colSpan={4} className="px-6 py-4 text-sm font-medium text-gray-900 text-center">
+                                    <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-center">
                                         No hay categorías disponibles
                                     </td>
                                 </tr>
@@ -75,6 +76,13 @@ export function CategoriasAdminClient({ categories, totalPages }: { categories: 
                                                 <span className="text-green-600 font-semibold">Habilitada</span>
                                             ) : (
                                                 <span className="text-red-600 font-semibold">Deshabilitada</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            {categoria.isExpanded ? (
+                                                <span className="text-emerald-600 font-semibold">Desplegada</span>
+                                            ) : (
+                                                <span className="text-gray-500 font-semibold">Colapsada</span>
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
