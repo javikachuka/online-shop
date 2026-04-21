@@ -4,21 +4,22 @@ import {prisma} from '@/lib/prisma';
 import { Company, CreateCompanyInput, UpdateCompanyInput } from '@/interfaces';
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 
+const findPreferredCompany = async (): Promise<Company | null> => {
+  return prisma.company.findFirst({
+    orderBy: [
+      { isDefault: 'desc' },
+      { isActive: 'desc' },
+      { createdAt: 'asc' }
+    ]
+  });
+};
+
 // Obtener la empresa por defecto o la primera empresa disponible
 export const getDefaultCompany = async (): Promise<Company | null> => {
+  noStore();
+
   try {
-    const company = await prisma.company.findFirst({
-      where: {
-        OR: [
-          { isDefault: true },
-          { isActive: true }
-        ]
-      },
-      orderBy: [
-        { isDefault: 'desc' },
-        { createdAt: 'asc' }
-      ]
-    });
+    const company = await findPreferredCompany();
 
     return company;
   } catch (error) {
@@ -29,9 +30,12 @@ export const getDefaultCompany = async (): Promise<Company | null> => {
 
 // Obtener todas las empresas
 export const getAllCompanies = async (): Promise<Company[]> => {
+  noStore();
+
   try {
     const companies = await prisma.company.findMany({
       orderBy: [
+        { isActive: 'desc' },
         { isDefault: 'desc' },
         { name: 'asc' }
       ]
@@ -46,6 +50,8 @@ export const getAllCompanies = async (): Promise<Company[]> => {
 
 // Obtener empresa por ID
 export const getCompanyById = async (id: string): Promise<Company | null> => {
+  noStore();
+
   try {
     const company = await prisma.company.findUnique({
       where: { id }
@@ -60,6 +66,8 @@ export const getCompanyById = async (id: string): Promise<Company | null> => {
 
 // Obtener empresa por slug
 export const getCompanyBySlug = async (slug: string): Promise<Company | null> => {
+  noStore();
+
   try {
     const company = await prisma.company.findUnique({
       where: { slug }
@@ -269,13 +277,17 @@ export const getCompanyNameLogo = async () => {
   
   try {
     const company = await prisma.company.findFirst({
-        where: { isDefault: true },
-        select: {
-          name: true,
-          logo: true,
-          phone: true
-        }
-      });
+      orderBy: [
+        { isDefault: 'desc' },
+        { isActive: 'desc' },
+        { createdAt: 'asc' }
+      ],
+      select: {
+        name: true,
+        logo: true,
+        phone: true
+      }
+    });
 
     if (!company) {
       return {

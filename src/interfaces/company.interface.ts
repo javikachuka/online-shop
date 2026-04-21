@@ -31,6 +31,11 @@ export interface Company {
   swift?: string | null;
   accountNumber?: string | null;
   accountType?: string | null;
+
+  // Configuración de envíos
+  deliveryBaseCost: number;
+  freeShippingThreshold: number;
+  expressShippingCost: number;
   
   // Configuración general
   isActive: boolean;
@@ -76,6 +81,11 @@ export interface CreateCompanyInput {
   swift?: string;
   accountNumber?: string;
   accountType?: string;
+
+  // Configuración de envíos
+  deliveryBaseCost?: number;
+  freeShippingThreshold?: number;
+  expressShippingCost?: number;
   
   // Configuración
   isActive?: boolean;
@@ -124,4 +134,7 @@ export interface CompanySettings {
   isDefault: boolean;
   currency: string;
   timezone: string;
+  deliveryBaseCost?: number;
+  freeShippingThreshold?: number;
+  expressShippingCost?: number;
 }

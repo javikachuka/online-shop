@@ -330,6 +330,11 @@ model Company {
   swift             String?  // Código SWIFT
   accountNumber     String?  // Número de cuenta genérico
   accountType       String?  // Tipo de cuenta (ej: "corriente", "ahorro")
+
+  // Configuración de envíos
+  deliveryBaseCost       Float   @default(10000)
+  freeShippingThreshold  Float   @default(120000)
+  expressShippingCost    Float   @default(2500)
   
   // Configuración general
   isActive          Boolean  @default(true)

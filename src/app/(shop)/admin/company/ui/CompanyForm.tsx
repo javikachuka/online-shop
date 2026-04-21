@@ -10,6 +10,7 @@ import {
   IoCallOutline, 
   IoColorPaletteOutline, 
   IoCardOutline,
+  IoCarOutline,
   IoSettingsOutline,
   IoSaveOutline,
   IoCheckmarkCircleOutline,
@@ -64,10 +65,15 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({ company }) => {
     isActive: company?.isActive ?? true,
     isDefault: company?.isDefault ?? false,
     currency: company?.currency || 'ARS',
-    timezone: company?.timezone || 'America/Argentina/Buenos_Aires'
+    timezone: company?.timezone || 'America/Argentina/Buenos_Aires',
+
+    // Configuración de envíos
+    deliveryBaseCost: company?.deliveryBaseCost ?? 10000,
+    freeShippingThreshold: company?.freeShippingThreshold ?? 120000,
+    expressShippingCost: company?.expressShippingCost ?? 2500
   });
 
-  const handleInputChange = (field: keyof CreateCompanyInput, value: string | boolean) => {
+  const handleInputChange = (field: keyof CreateCompanyInput, value: string | boolean | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -588,6 +594,58 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({ company }) => {
                   Empresa por Defecto
                 </label>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Configuración de Envíos */}
+        <div className="bg-gray-50 p-6 rounded-lg">
+          <div className="flex items-center gap-2 mb-4">
+            <IoCarOutline className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900">Configuración de Envíos</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Costo base envío a domicilio
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={formData.deliveryBaseCost ?? 0}
+                onChange={(e) => handleInputChange('deliveryBaseCost', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Umbral de envío gratis
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={formData.freeShippingThreshold ?? 0}
+                onChange={(e) => handleInputChange('freeShippingThreshold', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Costo envío express
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={formData.expressShippingCost ?? 0}
+                onChange={(e) => handleInputChange('expressShippingCost', Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
         </div>

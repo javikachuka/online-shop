@@ -9,12 +9,14 @@ import { useOrderSummary } from "@/hooks";
 import { currencyFormat } from "@/utils";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ShippingConfig } from "@/lib/shipping-utils";
 
 interface Props{
     paymentsMethods: PaymentMethod[]
+    shippingConfig: ShippingConfig
 }
 
-export const PlaceOrder = ({paymentsMethods} : Props) => {
+export const PlaceOrder = ({paymentsMethods, shippingConfig} : Props) => {
     const router = useRouter();
     const [loaded, setLoaded] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -37,7 +39,7 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
         freeShippingThreshold,
         totalWithShipping,
         progressToFreeShipping 
-    } = useOrderSummary(address.deliveryMethod || 'delivery');
+    } = useOrderSummary(address.deliveryMethod || 'delivery', shippingConfig);
 
     useEffect(() => {
         setLoaded(true);
@@ -252,15 +254,14 @@ export const PlaceOrder = ({paymentsMethods} : Props) => {
             <div className="mt-5 mb-2 w-full">
                 <p className="mb-5">
                     <span className="text-xs">
-                        Al hacer clic en &quot;Realizar pedido&quot; aceptas
-                        nuestros{" "}
+                        Al continuar con el pago aceptas nuestros{" "}
                         <a href="#" className="underline">
-                            terminos y condiciones
+                            términos y condiciones
                         </a>{" "}
                         y{" "}
                         <a href="#" className="underline">
-                            politica de privacidad
-                        </a>
+                            política de privacidad
+                        </a>.
                     </span>
                 </p>
                 {errorMessage && (

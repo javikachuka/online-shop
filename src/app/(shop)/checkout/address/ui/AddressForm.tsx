@@ -2,7 +2,7 @@
 
 import { setUserAddress } from "@/actions";
 import { Address, Company, Country } from "@/interfaces";
-import { useAddressStore, useCartStore } from "@/store";
+import { useAddressStore } from "@/store";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -57,6 +57,14 @@ export const AddressForm = ({countries, userStoredAddress = {}, company}: Props)
         required: true
     })
 
+    const deliveryBaseCost = company?.deliveryBaseCost ?? 10000;
+    const formattedDeliveryBaseCost = new Intl.NumberFormat('es-AR', {
+        style: 'currency',
+        currency: company?.currency || 'ARS',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(deliveryBaseCost);
+
     useEffect(() => {
 
         if(storeAddress.firstName){
@@ -97,7 +105,7 @@ export const AddressForm = ({countries, userStoredAddress = {}, company}: Props)
                             />
                             <div>
                                 <p className="font-semibold">🚚 Envío a domicilio</p>
-                                <p className="text-sm text-gray-600">Costo: $10,000</p>
+                                <p className="text-sm text-gray-600">Costo: {formattedDeliveryBaseCost}</p>
                                 <p className="text-xs text-gray-500">Recibilo en esta dirección</p>
                             </div>
                         </div>

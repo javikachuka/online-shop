@@ -1,23 +1,46 @@
 'use server'
 
 import { Address } from "@/interfaces";
-import { calculateShippingByAmount as utilCalculateShippingByAmount, SHIPPING_CONFIG } from '@/lib/shipping-utils';
-
-interface ShippingCalculation {
-    cost: number;
-    isFree: boolean;
-    method: string;
-    reason?: string;
-}
+import { prisma } from "@/lib/prisma";
+import {
+    calculateShippingByAmount as utilCalculateShippingByAmount,
+    calculateShippingByDeliveryMethod,
+    DEFAULT_SHIPPING_CONFIG,
+    ShippingConfig
+} from '@/lib/shipping-utils';
 
 // Interfaz para el cálculo completo con dirección
 export interface ShippingCalculationWithAddress {
   cost: number;
   isFree: boolean;
   freeShippingThreshold: number;
-  method: 'standard' | 'express';
+  method: 'standard' | 'express' | 'pickup';
   address: Address;
 }
+
+const getShippingConfig = async (): Promise<ShippingConfig> => {
+    const defaultCompany = await prisma.company.findFirst({
+        where: {
+            OR: [{ isDefault: true }, { isActive: true }]
+        },
+        orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+        select: {
+            deliveryBaseCost: true,
+            freeShippingThreshold: true,
+            expressShippingCost: true
+        }
+    });
+
+    if (!defaultCompany) {
+        return DEFAULT_SHIPPING_CONFIG;
+    }
+
+    return {
+        standardCost: defaultCompany.deliveryBaseCost,
+        freeShippingThreshold: defaultCompany.freeShippingThreshold,
+        expressCost: defaultCompany.expressShippingCost
+    };
+};
 
 /**
  * Versión simplificada para usar en server actions sin dirección
@@ -33,18 +56,17 @@ export const calculateShippingByAmount = utilCalculateShippingByAmount;
  * @param discount Descuentos aplicados
  * @returns Cálculo de envío completo
  */
-export const calculateShippingCost = (
+export const calculateShippingCost = async (
     address: Address,
     subTotal: number,
     discount: number = 0
-): ShippingCalculationWithAddress => {
+): Promise<ShippingCalculationWithAddress> => {
     
     const effectiveAmount = subTotal - discount;
     const deliveryMethod = address.deliveryMethod || 'delivery';
+    const shippingConfig = await getShippingConfig();
     
-    // Usar la función que considera el método de entrega
-    const { calculateShippingByDeliveryMethod } = require('@/lib/shipping-utils');
-    const baseCalculation = calculateShippingByDeliveryMethod(deliveryMethod, effectiveAmount);
+    const baseCalculation = calculateShippingByDeliveryMethod(deliveryMethod, effectiveAmount, shippingConfig);
     
     // En el futuro, podrías modificar el costo basado en la dirección:
     // if (address.city === 'Ushuaia') baseCalculation.cost += 1000;
@@ -62,12 +84,13 @@ export const calculateShippingCost = (
  * @param discount Descuentos aplicados
  * @returns Lista de opciones de envío
  */
-export const getShippingOptions = (address: Address, subTotal: number, discount: number = 0) => {
-    const standardShipping = calculateShippingCost(address, subTotal, discount);
+export const getShippingOptions = async (address: Address, subTotal: number, discount: number = 0) => {
+    const standardShipping = await calculateShippingCost(address, subTotal, discount);
+    const shippingConfig = await getShippingConfig();
     // Para futuro: implementar express con costo diferente
     const expressShipping = {
         ...standardShipping,
-        cost: standardShipping.isFree ? 0 : SHIPPING_CONFIG.EXPRESS_COST,
+        cost: standardShipping.isFree ? 0 : shippingConfig.expressCost,
         method: 'express' as const
     };
 
@@ -97,7 +120,7 @@ export const getShippingOptions = (address: Address, subTotal: number, discount:
  * @returns boolean
  */
 export const qualifiesForFreeShipping = (cartTotal: number): boolean => {
-    return cartTotal >= SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD;
+    return cartTotal >= DEFAULT_SHIPPING_CONFIG.freeShippingThreshold;
 };
 
 /**
@@ -109,5 +132,5 @@ export const getAmountForFreeShipping = (cartTotal: number): number => {
     if (qualifiesForFreeShipping(cartTotal)) {
         return 0;
     }
-    return SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD - cartTotal;
+    return DEFAULT_SHIPPING_CONFIG.freeShippingThreshold - cartTotal;
 };

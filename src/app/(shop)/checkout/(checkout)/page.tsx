@@ -2,12 +2,20 @@ import { Title } from "@/components";
 import Link from "next/link";
 import { ProductsInCart } from "./ui/ProductsInCart";
 import { PlaceOrder } from "./ui/PlaceOrder";
-import { getPaymentsMethods } from "@/actions";
+import { getDefaultCompany, getPaymentsMethods } from "@/actions";
+import { DEFAULT_SHIPPING_CONFIG } from "@/lib/shipping-utils";
 
 
 export default async function CategoryPage() {
 
     const paymentsMethods = await getPaymentsMethods();
+    const defaultCompany = await getDefaultCompany();
+
+    const shippingConfig = {
+        standardCost: defaultCompany?.deliveryBaseCost ?? DEFAULT_SHIPPING_CONFIG.standardCost,
+        freeShippingThreshold: defaultCompany?.freeShippingThreshold ?? DEFAULT_SHIPPING_CONFIG.freeShippingThreshold,
+        expressCost: defaultCompany?.expressShippingCost ?? DEFAULT_SHIPPING_CONFIG.expressCost
+    };
     
     
     return (
@@ -28,7 +36,7 @@ export default async function CategoryPage() {
                     </div>
 
                     {/* Checkout */}
-                    <PlaceOrder paymentsMethods={paymentsMethods} />
+                    <PlaceOrder paymentsMethods={paymentsMethods} shippingConfig={shippingConfig} />
                 </div>
             </div>
         </div>

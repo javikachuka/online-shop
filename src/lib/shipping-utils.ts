@@ -1,11 +1,18 @@
-export const SHIPPING_CONFIG = {
-  STANDARD_COST: 10000,           // $10.000 estándar (coincide con el backend)
-  FREE_SHIPPING_THRESHOLD: 120000, // Gratis > $120k (coincide con el backend)
-  EXPRESS_COST: 2500,             // $2500 express (futuro)
-  METHODS: {
-    STANDARD: 'standard',
-    EXPRESS: 'express'  // Para futuro
-  }
+export interface ShippingConfig {
+  standardCost: number;
+  freeShippingThreshold: number;
+  expressCost: number;
+}
+
+export const DEFAULT_SHIPPING_CONFIG: ShippingConfig = {
+  standardCost: 10000,
+  freeShippingThreshold: 120000,
+  expressCost: 2500
+};
+
+export const SHIPPING_METHODS = {
+  STANDARD: 'standard',
+  EXPRESS: 'express'
 } as const;
 
 export interface ShippingCalculation {
@@ -21,7 +28,8 @@ export interface ShippingCalculation {
  */
 export const calculateShippingByDeliveryMethod = (
   deliveryMethod: 'delivery' | 'pickup',
-  amount: number
+  amount: number,
+  config: ShippingConfig = DEFAULT_SHIPPING_CONFIG
 ): ShippingCalculation => {
   
   // Si es retiro en local, siempre es gratis
@@ -29,18 +37,18 @@ export const calculateShippingByDeliveryMethod = (
     return {
       cost: 0,
       isFree: true,
-      freeShippingThreshold: SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD,
+      freeShippingThreshold: config.freeShippingThreshold,
       method: 'pickup'
     };
   }
   
   // Si es envío, usar lógica actual
-  const isFree = amount >= SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD;
+  const isFree = amount >= config.freeShippingThreshold;
   
   return {
-    cost: isFree ? 0 : SHIPPING_CONFIG.STANDARD_COST,
+    cost: isFree ? 0 : config.standardCost,
     isFree,
-    freeShippingThreshold: SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD,
+    freeShippingThreshold: config.freeShippingThreshold,
     method: 'standard'
   };
 };
