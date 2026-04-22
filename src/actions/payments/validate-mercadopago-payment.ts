@@ -18,6 +18,7 @@ interface PaymentValidationResult {
         paymentId: string;
         dateApproved?: string;
         transactionId?: string;
+        externalReference?: string;
     };
 }
 
@@ -192,81 +193,35 @@ export const validateMercadoPagoPayment = async (paymentId: string): Promise<Pay
             }
         }
 
-        // 7. Procesar según el estado del pago
+        // 7. Retornar resultado sin efectos secundarios.
+        // El procesamiento de estado se centraliza en process-approved-payment y webhook.
         const result: PaymentValidationResult = {
-            ok: false,
+            ok: true,
             orderId: order.id,
             paymentData: {
                 status: status || 'unknown',
                 amount: receivedAmount,
                 paymentId: mpPaymentId?.toString() || paymentId,
                 dateApproved: date_approved || undefined,
-                transactionId: mpPaymentId?.toString() || paymentId
-            }
+                transactionId: mpPaymentId?.toString() || paymentId,
+                externalReference: external_reference || undefined
+            },
+            message: (() => {
+                switch (status) {
+                    case 'approved':
+                        return 'Pago aprobado y validado correctamente';
+                    case 'pending':
+                    case 'in_process':
+                        return 'Pago pendiente de aprobación';
+                    case 'rejected':
+                        return 'El pago fue rechazado';
+                    case 'cancelled':
+                        return 'El pago fue cancelado';
+                    default:
+                        return `Pago en estado desconocido: ${status}`;
+                }
+            })()
         };
-
-        switch (status) {
-            case 'approved':
-                // Actualizar la orden como pagada
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        isPaid: true,
-                        paymentStatus: 'approved',
-                        paidAt: new Date(date_approved || Date.now()),
-                        transactionId: mpPaymentId?.toString() || paymentId
-                    }
-                });
-
-                result.ok = true;
-                result.message = 'Pago aprobado y orden actualizada correctamente';
-                break;
-
-            case 'pending':
-                // Actualizar la orden como pendiente
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        paymentStatus: 'pending',
-                        transactionId: mpPaymentId?.toString() || paymentId
-                    }
-                });
-
-                result.ok = true;
-                result.message = 'Pago pendiente de aprobación';
-                break;
-
-            case 'rejected':
-            case 'cancelled':
-                // Actualizar el estado pero no marcar como pagada
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        paymentStatus: status,
-                        transactionId: mpPaymentId?.toString() || paymentId
-                    }
-                });
-
-                result.ok = false;
-                result.message = status === 'rejected' 
-                    ? 'El pago fue rechazado' 
-                    : 'El pago fue cancelado';
-                break;
-
-            default:
-                // Estado desconocido
-                await prisma.order.update({
-                    where: { id: order.id },
-                    data: {
-                        paymentStatus: status,
-                        transactionId: mpPaymentId?.toString() || paymentId
-                    }
-                });
-
-                result.ok = false;
-                result.message = `Pago en estado desconocido: ${status}`;
-                break;
-        }
 
         console.log('Payment validation result:', result);
         return result;

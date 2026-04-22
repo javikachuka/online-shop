@@ -66,9 +66,9 @@ export const createOrderFromSession = async (
                     shippingMethod: orderSession.shippingMethod,
                     freeShipping: orderSession.freeShipping,
                     itemsInOrder: cartItemsData.reduce((sum: number, item: any) => sum + item.quantity, 0),
-                    orderStatus: 'paid', // Ya fue pagado
-                    isPaid: true,
-                    paidAt: new Date(),
+                    orderStatus: 'pending_payment',
+                    isPaid: false,
+                    paymentStatus: 'pending',
                     transactionId: paymentId
                 }
             });
@@ -134,32 +134,18 @@ export const createOrderFromSession = async (
                 });
             }
 
-            // 9. Convertir reservas temporales en definitivas
+            // 9. Vincular las reservas activas con la Order real
             await tx.stockReservation.updateMany({
                 where: {
                     orderKey: sessionToken,
                     status: 'ACTIVE'
                 },
                 data: {
-                    status: 'COMPLETED',
-                    completedAt: new Date(),
-                    orderKey: order.id // Actualizar orderKey al ID de la orden real
+                    orderKey: order.id
                 }
             });
 
-            // 10. Descontar stock definitivamente
-            for (const cartItem of cartItemsData) {
-                await tx.productVariant.update({
-                    where: { id: cartItem.variantId },
-                    data: {
-                        stock: {
-                            decrement: cartItem.quantity
-                        }
-                    }
-                });
-            }
-
-            // 11. Marcar OrderSession como procesada
+            // 10. Marcar OrderSession como procesada
             await tx.orderSession.update({
                 where: { id: orderSession.id },
                 data: { 

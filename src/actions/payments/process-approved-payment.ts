@@ -90,7 +90,7 @@ export const processApprovedPayment = async (paymentId: string): Promise<Process
                 
             case 'rejected':
             case 'cancelled':
-                return await handleRejectedPayment(orderId, paymentId, paymentData.status);
+                return await handleRejectedPayment(orderId, paymentId, paymentData.status, paymentData);
                 
             default:
                 console.warn(`⚠️ Estado de pago no reconocido: ${paymentData.status}`);
@@ -174,15 +174,20 @@ async function handleApprovedPayment(
 
             await Promise.all(stockUpdates);
 
-            // Liberar reservas temporales (ya no las necesitamos)
+            const reservationKeys = [orderId];
+            if (paymentData?.externalReference && paymentData.externalReference !== orderId) {
+                reservationKeys.push(paymentData.externalReference);
+            }
+
+            // Completar reservas temporales
             await tx.stockReservation.updateMany({
                 where: {
-                    orderKey: orderId,
+                    orderKey: { in: reservationKeys },
                     status: 'ACTIVE'
                 },
                 data: {
                     status: 'COMPLETED',
-                    releasedAt: new Date()
+                    completedAt: new Date()
                 }
             });
 
@@ -220,7 +225,8 @@ async function handleApprovedPayment(
 async function handleRejectedPayment(
     orderId: string, 
     paymentId: string, 
-    status: string
+    status: string,
+    paymentData?: any
 ): Promise<ProcessApprovedPaymentResult> {
     try {
         console.log(`❌ Procesando pago rechazado/cancelado para orden: ${orderId}`);
@@ -230,16 +236,22 @@ async function handleRejectedPayment(
             await tx.order.update({
                 where: { id: orderId },
                 data: {
+                    orderStatus: 'cancelled',
                     paymentStatus: status,
                     transactionId: paymentId
                     // No actualizar isPaid ni paidAt
                 }
             });
 
+            const reservationKeys = [orderId];
+            if (paymentData?.externalReference && paymentData.externalReference !== orderId) {
+                reservationKeys.push(paymentData.externalReference);
+            }
+
             // Liberar reservas de stock (pago no exitoso)
             await tx.stockReservation.updateMany({
                 where: {
-                    orderKey: orderId,
+                    orderKey: { in: reservationKeys },
                     status: 'ACTIVE'
                 },
                 data: {

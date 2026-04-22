@@ -1,33 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanExpiredOrderSessions, getOrderSessionStats } from '@/actions/checkout/clean-expired-sessions';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const getExpectedCronToken = () => {
+    return process.env.CRON_SECRET || process.env.CRON_AUTH_TOKEN || null;
+};
+
+const validateCronAuth = (request: NextRequest) => {
+    const expectedToken = getExpectedCronToken();
+
+    if (!expectedToken) {
+        return {
+            ok: false,
+            status: 500,
+            error: 'Cron token not configured'
+        };
+    }
+
+    const authToken = request.headers.get('Authorization');
+    if (authToken !== `Bearer ${expectedToken}`) {
+        return {
+            ok: false,
+            status: 401,
+            error: 'Unauthorized'
+        };
+    }
+
+    return { ok: true as const };
+};
+
+const runCleanup = async (includeStats: boolean = false) => {
+    const sessionCleanupResult = await cleanExpiredOrderSessions();
+
+    const result: {
+        timestamp: string;
+        sessionCleanup: Awaited<ReturnType<typeof cleanExpiredOrderSessions>>;
+        orderSessionStats?: Awaited<ReturnType<typeof getOrderSessionStats>>;
+        success: boolean;
+    } = {
+        timestamp: new Date().toISOString(),
+        sessionCleanup: sessionCleanupResult,
+        success: true
+    };
+
+    if (includeStats) {
+        result.orderSessionStats = await getOrderSessionStats();
+    }
+
+    return result;
+};
+
 /**
  * Endpoint para el proceso programado de limpieza de OrderSessions
  * Se debe llamar cada 5 minutos desde un cron job
  */
 export async function POST(request: NextRequest) {
     try {
-        // Verificar token de autorización para seguridad
-        const authToken = request.headers.get('Authorization');
-        const expectedToken = process.env.CRON_AUTH_TOKEN || 'default-cron-token';
-        
-        if (authToken !== `Bearer ${expectedToken}`) {
+        const authValidation = validateCronAuth(request);
+        if (!authValidation.ok) {
             return NextResponse.json(
-                { error: 'Unauthorized' }, 
-                { status: 401 }
+                { error: authValidation.error },
+                { status: authValidation.status }
             );
         }
 
         console.log('🚀 Iniciando proceso programado de limpieza de OrderSessions...');
 
-        // Ejecutar limpieza de OrderSessions expiradas
-        const sessionCleanupResult = await cleanExpiredOrderSessions();
-
-        const result = {
-            timestamp: new Date().toISOString(),
-            sessionCleanup: sessionCleanupResult,
-            success: true
-        };
+        const result = await runCleanup(true);
 
         console.log('✅ Proceso programado completado:', result);
 
@@ -52,22 +93,32 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
     try {
-        const authToken = request.headers.get('Authorization');
-        const expectedToken = process.env.CRON_AUTH_TOKEN || 'default-cron-token';
-        
-        if (authToken !== `Bearer ${expectedToken}`) {
+        const authValidation = validateCronAuth(request);
+        if (!authValidation.ok) {
             return NextResponse.json(
-                { error: 'Unauthorized' }, 
-                { status: 401 }
+                { error: authValidation.error },
+                { status: authValidation.status }
             );
         }
 
-        const stats = await getOrderSessionStats();
+        const mode = request.nextUrl.searchParams.get('mode');
+        if (mode === 'stats') {
+            const stats = await getOrderSessionStats();
 
-        return NextResponse.json({
-            timestamp: new Date().toISOString(),
-            orderSessionStats: stats
-        });
+            return NextResponse.json({
+                timestamp: new Date().toISOString(),
+                orderSessionStats: stats,
+                success: true
+            });
+        }
+
+        console.log('🚀 Iniciando proceso programado de limpieza de OrderSessions (GET)...');
+
+        const result = await runCleanup(true);
+
+        console.log('✅ Proceso programado GET completado:', result);
+
+        return NextResponse.json(result);
 
     } catch (error: any) {
         console.error('❌ Error obteniendo estadísticas:', error);

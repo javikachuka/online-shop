@@ -205,7 +205,7 @@ async function processPaymentByStatusHybrid(order: any, payment: any, paymentId:
                 });
 
                 // Descontar stock definitivamente y completar reservas
-                await completeStockReservation(tx, order);
+                await completeStockReservation(tx, order, payment.external_reference);
 
                 return { 
                     status: 'approved_by_webhook', 
@@ -222,13 +222,14 @@ async function processPaymentByStatusHybrid(order: any, payment: any, paymentId:
                     where: { id: order.id },
                     data: {
                         orderStatus: 'cancelled',
+                        isPaid: false,
                         paymentStatus: payment.status,
                         transactionId: paymentId
                     }
                 });
 
                 // Liberar stock reservado
-                await releaseStockReservation(tx, order);
+                await releaseStockReservation(tx, order, payment.external_reference);
 
                 return { 
                     status: 'cancelled_by_webhook', 
@@ -278,13 +279,16 @@ async function processPaymentByStatusHybrid(order: any, payment: any, paymentId:
 /**
  * Completa la reserva de stock y descuenta definitivamente
  */
-async function completeStockReservation(tx: any, order: any) {
-    const stockReservationId = `order-${order.id}`;
-    
-    // Completar reservas de stock
+async function completeStockReservation(tx: any, order: any, fallbackKey?: string) {
+    const reservationKeys = [order.id];
+    if (fallbackKey && fallbackKey !== order.id) {
+        reservationKeys.push(fallbackKey);
+    }
+
+    // Completar reservas de stock activas asociadas a la orden
     await tx.stockReservation.updateMany({
         where: {
-            reservationId: stockReservationId,
+            orderKey: { in: reservationKeys },
             status: 'ACTIVE'
         },
         data: {
@@ -311,12 +315,15 @@ async function completeStockReservation(tx: any, order: any) {
 /**
  * Libera la reserva de stock
  */
-async function releaseStockReservation(tx: any, order: any) {
-    const stockReservationId = `order-${order.id}`;
-    
+async function releaseStockReservation(tx: any, order: any, fallbackKey?: string) {
+    const reservationKeys = [order.id];
+    if (fallbackKey && fallbackKey !== order.id) {
+        reservationKeys.push(fallbackKey);
+    }
+
     await tx.stockReservation.updateMany({
         where: {
-            reservationId: stockReservationId,
+            orderKey: { in: reservationKeys },
             status: 'ACTIVE'
         },
         data: {
