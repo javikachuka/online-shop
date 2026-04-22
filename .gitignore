@@ -38,4 +38,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.github
+# Keep Copilot local instructions out of git, but allow workflows
+.github/*
+!.github/workflows/
+!.github/workflows/**
+.github/copilot-instructions.md
