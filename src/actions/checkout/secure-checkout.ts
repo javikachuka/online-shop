@@ -5,6 +5,7 @@ import { auth } from "@/auth.config";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { Address } from "@/interfaces";
 import { randomBytes } from "crypto";
+import { runOpportunisticSessionCleanup } from "./opportunistic-session-cleanup";
 
 const mercadopago = new MercadoPagoConfig({
     accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!
@@ -98,6 +99,8 @@ export const createSecureCheckout = async (
 
         const userId = session.user.id;
         console.log('🚀 Iniciando checkout seguro para usuario:', userId);
+
+        await runOpportunisticSessionCleanup('secure-checkout');
 
         // 2. Usar transacción para garantizar atomicidad
         const result = await prisma.$transaction(async (tx) => {
