@@ -111,6 +111,26 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
                 if(productQuantity === 0) {
                     throw new Error(`Producto ${product.id} no tiene cantidad a actualizar`);
                 }
+
+                // Validar stock disponible considerando reservas activas (ej: alguien en checkout MP)
+                const activeReservations = await tx.stockReservation.aggregate({
+                    where: {
+                        variantId: product.id,
+                        status: 'ACTIVE',
+                        expiresAt: { gt: new Date() },
+                    },
+                    _sum: { quantity: true },
+                });
+                const reservedStock = activeReservations._sum.quantity || 0;
+                const availableStock = product.stock - reservedStock;
+
+                if (availableStock < productQuantity) {
+                    throw new Error(
+                        `Stock insuficiente para ${product.sku}. ` +
+                        `Disponible: ${availableStock}, Solicitado: ${productQuantity}`
+                    );
+                }
+
                 return tx.productVariant.update({
                     where: { id: product.id },
                     data: {
@@ -123,6 +143,7 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
             
             const updatedProducts = await Promise.all(updateStockPromises);
     
+            // Verificación de seguridad post-decremento (guarda ante race conditions)
             updatedProducts.forEach(product => {
                 if(product.stock < 0){
                     throw new Error(`Producto ${product.sku} no tiene suficiente stock`)
