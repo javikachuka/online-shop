@@ -17,6 +17,12 @@ interface Props {
 
 export const FilterAttributes = ({ product, filters, onVariantChange }: Props) => {
     const variants = useMemo(() => product.variants || [], [product.variants]);
+    const [availableStockByVariant, setAvailableStockByVariant] = useState<Record<string, number>>({});
+    const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(variants.length > 0);
+
+    const getAvailableStockForVariant = (variant: ProductVariant) => {
+        return availableStockByVariant[variant.id] ?? variant.stock;
+    };
 
     const getCartImageForVariant = (variant: ProductVariant) => {
         return getProductImageForVariantUrl(
@@ -65,6 +71,42 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
     const [selectedVariantData, setSelectedVariantData] = useState<ProductVariant | null>(null);
 
     useEffect(() => {
+        const fetchAvailableStock = async () => {
+            if (variants.length === 0) {
+                setAvailableStockByVariant({});
+                setIsAvailabilityLoading(false);
+                return;
+            }
+
+            try {
+                setIsAvailabilityLoading(true);
+
+                const response = await fetch('/api/stock-by-variant', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ variantIds: variants.map((variant) => variant.id) })
+                });
+
+                if (!response.ok) {
+                    throw new Error('No se pudo verificar el stock disponible');
+                }
+
+                const data = await response.json() as Array<{ id: string; stock: number }>;
+
+                setAvailableStockByVariant(
+                    Object.fromEntries(data.map((variant) => [variant.id, variant.stock]))
+                );
+            } catch {
+                setAvailableStockByVariant({});
+            } finally {
+                setIsAvailabilityLoading(false);
+            }
+        };
+
+        fetchAvailableStock();
+    }, [variants]);
+
+    useEffect(() => {
         // Solo buscar variante si se seleccionaron todos los atributos requeridos
         const allFiltersSelected =
             Object.keys(selectedAttributes).length === Object.keys(filters).length;
@@ -96,6 +138,31 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         setQuantity(1);
     }, [selectedAttributes, filters, variants, onVariantChange]);
 
+    useEffect(() => {
+        if (selectedVariantData && !isAvailabilityLoading) {
+            const availableStock = getAvailableStockForVariant(selectedVariantData);
+
+            if (availableStock <= 0) {
+                setQuantity(1);
+            }
+        }
+    }, [selectedVariantData, isAvailabilityLoading, availableStockByVariant]);
+
+    const quantityInCartForSelectedVariant = selectedVariantData
+        ? (isInCart(selectedVariantData.id)?.quantity || 0)
+        : 0;
+
+    const selectedVariantAvailableStock = selectedVariantData
+        ? getAvailableStockForVariant(selectedVariantData)
+        : 0;
+
+    const remainingSelectedVariantStock = selectedVariantData
+        ? Math.max(0, selectedVariantAvailableStock - quantityInCartForSelectedVariant)
+        : 0;
+
+    const isSelectedVariantUnavailable =
+        !!selectedVariantData && !isAvailabilityLoading && remainingSelectedVariantStock <= 0;
+
     //manejar el cambio de cantidad segun stock
     const handleQuantityChange = (value: number) => {
         if(selectedVariantData === null) {
@@ -104,9 +171,16 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         }
         const variantInCart = isInCart(selectedVariantData.id);
         const quantityInCart = variantInCart ? variantInCart.quantity : 0;
-        
-        if(value + quantityInCart > selectedVariantData.stock){
-            toast.error(`Stock máximo disponible: ${selectedVariantData.stock - quantityInCart} unidades.`);
+
+        if (isAvailabilityLoading) {
+            toast.error("Estamos verificando el stock disponible. Intentá nuevamente en un instante.");
+            return;
+        }
+
+        const availableStock = getAvailableStockForVariant(selectedVariantData);
+
+        if(value + quantityInCart > availableStock){
+            toast.error(`Stock máximo disponible: ${Math.max(0, availableStock - quantityInCart)} unidades.`);
             return;
         }
         setQuantity(value);
@@ -128,14 +202,14 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
     const isOptionAvailable = (attrName: string, value: string) => {
         // Simula la selección si se eligiera este valor
         const simulatedSelection = { ...selectedAttributes, [attrName]: value };
-        // Busca la variante que cumpla con la selección y tenga stock > 0
+        // Busca la variante que cumpla con la selección y tenga stock disponible real > 0
         const possible = variants.some((variant) => {
             const matches = Object.entries(simulatedSelection).every(([a, v]) =>
                 variant.attributes.some(
                     (attr) => attr.attribute.name === a && attr.value.value === v
                 )
             );
-            return matches && variant.stock > 0;
+            return matches && getAvailableStockForVariant(variant) > 0;
         });
         return possible;
     };
@@ -176,9 +250,15 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         // Validar contra stock local (el checkout validará con la BD en tiempo real)
         const variantInCart = isInCart(matchedVariant.id);
         const quantityInCart = variantInCart ? variantInCart.quantity : 0;
+        const availableStock = getAvailableStockForVariant(matchedVariant);
 
-        if (quantity + quantityInCart > matchedVariant.stock) {
-            toast.error(`Stock insuficiente. Disponible: ${matchedVariant.stock - quantityInCart} unidades.`);
+        if (isAvailabilityLoading) {
+            toast.error("Estamos verificando el stock disponible. Intentá nuevamente en un instante.");
+            return;
+        }
+
+        if (quantity + quantityInCart > availableStock) {
+            toast.error(`Stock insuficiente. Disponible: ${Math.max(0, availableStock - quantityInCart)} unidades.`);
             return;
         }
 
@@ -290,6 +370,21 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
                             No hay variante disponible con esta combinación.
                         </div>
                     )}
+                {selectedVariantData && (
+                    <div className="mt-4 text-sm">
+                        {isAvailabilityLoading ? (
+                            <span className="text-gray-500">Verificando disponibilidad...</span>
+                        ) : isSelectedVariantUnavailable ? (
+                            <span className="text-red-500">Sin stock disponible para esta combinación.</span>
+                        ) : remainingSelectedVariantStock === 1 ? (
+                            <span className="text-orange-500">1 disponible ahora.</span>
+                        ) : remainingSelectedVariantStock <= 10 ? (
+                            <span className="text-orange-500">{remainingSelectedVariantStock} disponibles ahora.</span>
+                        ) : (
+                            <span className="text-green-600">En stock.</span>
+                        )}
+                    </div>
+                )}
                 {/* selector cantidad */}
                 <QuantitySelector
                     quantity={quantity}
@@ -297,11 +392,16 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
                             handleQuantityChange(value)
                         }
                     }
-                    maxQuantity={selectedVariant?.stock || undefined}
+                    maxQuantity={remainingSelectedVariantStock || undefined}
+                    disabled={!selectedVariantData || isAvailabilityLoading || isSelectedVariantUnavailable}
                 />
                 
-                <button disabled={addedToCart} className={`${addedToCart ? 'btn-disabled' : 'btn-primary'} mb-5`} onClick={addToCart}>
-                    {addedToCart ? "Agregando" : "Agregar al carrito"}
+                <button
+                    disabled={addedToCart || !selectedVariantData || isAvailabilityLoading || isSelectedVariantUnavailable}
+                    className={`${addedToCart || !selectedVariantData || isAvailabilityLoading || isSelectedVariantUnavailable ? 'btn-disabled' : 'btn-primary'} mb-5`}
+                    onClick={addToCart}
+                >
+                    {isAvailabilityLoading ? "Verificando stock..." : isSelectedVariantUnavailable ? "Sin stock" : addedToCart ? "Agregando" : "Agregar al carrito"}
                 </button>
                 {
                     product.diffPrice && (

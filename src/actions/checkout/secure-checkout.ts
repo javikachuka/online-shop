@@ -5,6 +5,7 @@ import { auth } from "@/auth.config";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { Address } from "@/interfaces";
 import { randomBytes } from "crypto";
+import { Prisma } from "@prisma/client";
 import { runOpportunisticSessionCleanup } from "./opportunistic-session-cleanup";
 
 const mercadopago = new MercadoPagoConfig({
@@ -68,6 +69,38 @@ interface SecureCheckoutResult {
     reservationExpiresAt?: Date;
 }
 
+const SERIALIZABLE_MAX_RETRIES = 3;
+
+const isSerializableConflict = (error: unknown) => {
+    return (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+    );
+};
+
+const runSerializableCheckoutTransaction = async <T>(
+    transactionFn: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<T> => {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= SERIALIZABLE_MAX_RETRIES; attempt++) {
+        try {
+            return await prisma.$transaction(transactionFn, {
+                isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            });
+        } catch (error) {
+            if (!isSerializableConflict(error) || attempt === SERIALIZABLE_MAX_RETRIES) {
+                throw error;
+            }
+
+            lastError = error;
+            console.warn(`🔁 Reintentando checkout por conflicto de concurrencia (intento ${attempt}/${SERIALIZABLE_MAX_RETRIES})`);
+        }
+    }
+
+    throw lastError;
+};
+
 /**
  * Flujo seguro de checkout con OrderSession:
  * 1. Valida stock y precios desde BD
@@ -102,9 +135,8 @@ export const createSecureCheckout = async (
 
         await runOpportunisticSessionCleanup('secure-checkout');
 
-        // 2. Usar transacción para garantizar atomicidad
-        const result = await prisma.$transaction(async (tx) => {
-            
+        // 2. Usar transacción SERIALIZABLE para evitar sobreventa por concurrencia
+        const result = await runSerializableCheckoutTransaction(async (tx) => {
 
             // 2.2 Obtener productos con precios actuales de BD
             const variants = await tx.productVariant.findMany({
@@ -225,24 +257,29 @@ export const createSecureCheckout = async (
                 console.log(`🔓 Liberadas ${activeOrderSessions.length} sesiones activas previas para regenerar checkout`);
             }
 
-            // 2.3 Validar stock disponible
+            // 2.3 Validar stock disponible en lote considerando reservas activas
+            const now = new Date();
+            const reservationSums = await tx.stockReservation.groupBy({
+                by: ['variantId'],
+                where: {
+                    variantId: { in: items.map((item) => item.variantId) },
+                    status: 'ACTIVE',
+                    expiresAt: { gt: now },
+                },
+                _sum: { quantity: true },
+            });
+
+            const reservedByVariant = new Map(
+                reservationSums.map((entry) => [entry.variantId, entry._sum.quantity || 0])
+            );
+
             for (const item of items) {
-                const variant = variants.find(v => v.id === item.variantId);
+                const variant = variants.find((v) => v.id === item.variantId);
                 if (!variant) {
                     throw new Error(`Producto ${item.variantId} no encontrado`);
                 }
 
-                // Calcular stock disponible considerando reservas activas
-                const activeReservations = await tx.stockReservation.aggregate({
-                    where: {
-                        variantId: item.variantId,
-                        status: 'ACTIVE',
-                        expiresAt: { gt: new Date() }
-                    },
-                    _sum: { quantity: true }
-                });
-
-                const reservedStock = activeReservations._sum.quantity || 0;
+                const reservedStock = reservedByVariant.get(item.variantId) || 0;
                 const availableStock = variant.stock - reservedStock;
 
                 if (availableStock < item.quantity) {
