@@ -148,8 +148,12 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         }
     }, [selectedVariantData, isAvailabilityLoading, availableStockByVariant]);
 
-    const quantityInCartForSelectedVariant = selectedVariantData
-        ? (isInCart(selectedVariantData.id)?.quantity || 0)
+    const selectedVariantInCart = selectedVariantData
+        ? isInCart(selectedVariantData.id)
+        : false;
+
+    const quantityInCartForSelectedVariant = selectedVariantInCart
+        ? selectedVariantInCart.quantity
         : 0;
 
     const selectedVariantAvailableStock = selectedVariantData
