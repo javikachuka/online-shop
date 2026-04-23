@@ -1,6 +1,4 @@
-'use server'
-
-import {prisma} from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Limpia OrderSessions expiradas y libera sus reservas de stock
