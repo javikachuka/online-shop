@@ -12,11 +12,9 @@ jobs:
     steps:
       - name: Call cleanup endpoint
         run: |
-          set -e
-          echo "Calling cleanup endpoint..."
-          response=$(curl -sS -w "\n%{http_code}" \
-            -X GET "${{ secrets.CRON_URL }}" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          curl -f -X GET "${{ secrets.CRON_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "x-vercel-protection-bypass: ${{ secrets.VERCEL_BYPASS_TOKEN }}"
 
           body=$(echo "$response" | head -n -1)
           status=$(echo "$response" | tail -n 1)
