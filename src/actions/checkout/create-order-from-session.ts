@@ -69,7 +69,8 @@ export const createOrderFromSession = async (
                     orderStatus: 'pending_payment',
                     isPaid: false,
                     paymentStatus: 'pending',
-                    transactionId: paymentId
+                    transactionId: paymentId,
+                    checkoutSessionToken: sessionToken
                 }
             });
 

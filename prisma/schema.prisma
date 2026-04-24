@@ -220,6 +220,7 @@ model Order {
   reservationExpiresAt DateTime?    // NOW() + 15 minutos para reserva de stock
   mpPaymentId          String?      // ID de pago de MercadoPago para idempotencia
   mpPreferenceId       String?      // ID de preferencia de MercadoPago
+  checkoutSessionToken String?      // sessionToken de la OrderSession que originó esta orden (solo MP)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
