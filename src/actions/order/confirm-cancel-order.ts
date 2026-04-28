@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth.config";
 import { revalidatePath } from "next/cache";
 import { sendOrderPaymentConfirmationEmail } from "@/lib/order-email";
+import { applyStockChange } from "@/lib/stock-movements";
+import { StockMovementType } from "@prisma/client";
 
 export async function confirmOrCancelOrder(orderId: string, action: 'confirm' | 'cancel') {
     const session = await auth();
@@ -66,9 +68,14 @@ export async function confirmOrCancelOrder(orderId: string, action: 'confirm' | 
 
                 // 3. Incrementar stock de los productos
                 for (const item of order.OrderItem) {
-                    await tx.productVariant.update({
-                        where: { id: item.variantId },
-                        data: { stock: { increment: item.quantity } }
+                    await applyStockChange({
+                        tx,
+                        variantId: item.variantId,
+                        type: StockMovementType.RETURN,
+                        quantityDelta: item.quantity,
+                        reason: 'Order cancelled by admin',
+                        orderId: order.id,
+                        actorUserId: userId,
                     });
                 }
 

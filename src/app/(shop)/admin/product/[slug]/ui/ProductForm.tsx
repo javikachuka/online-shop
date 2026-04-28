@@ -717,6 +717,11 @@ export const ProductForm = ({
         ]))
         : Array.from(new Set(["General", ...groupsWithNewImages]));
 
+    const isEditingPersistedVariant =
+        editVariantIndex !== null &&
+        Boolean(variants[editVariantIndex]?.id) &&
+        variants[editVariantIndex].id.length >= 20;
+
     return (
         <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 mb-16 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
             {/* Textos */}
@@ -1113,16 +1118,22 @@ export const ProductForm = ({
                             />
                         </div>
                     )}
-                    <div className="flex flex-col w-full">
-                        <label className="text-xs font-semibold mb-1">Stock</label>
-                        <input
-                            type="number"
-                            placeholder="Stock"
-                            className="p-2 border rounded-md w-full"
-                            value={newVariant.stock}
-                            onChange={(e) => setNewVariant((v) => ({ ...v, stock: e.target.value }))}
-                        />
-                    </div>
+                    {!isEditingPersistedVariant ? (
+                        <div className="flex flex-col w-full">
+                            <label className="text-xs font-semibold mb-1">Stock inicial</label>
+                            <input
+                                type="number"
+                                placeholder="Stock"
+                                className="p-2 border rounded-md w-full"
+                                value={newVariant.stock}
+                                onChange={(e) => setNewVariant((v) => ({ ...v, stock: e.target.value }))}
+                            />
+                        </div>
+                    ) : (
+                        <div className="w-full rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+                            El stock de variantes existentes ya no se edita desde este formulario.
+                        </div>
+                    )}
                     
                     {/* Campos dinámicos para atributos en variante */}
                     {attributes

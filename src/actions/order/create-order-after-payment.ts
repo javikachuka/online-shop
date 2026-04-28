@@ -2,6 +2,8 @@
 
 import { Address, PaymentMethod } from "@/interfaces";
 import {prisma} from "@/lib/prisma";
+import { applyStockChange } from "@/lib/stock-movements";
+import { StockMovementType } from "@prisma/client";
 
 interface ProductToOrder {
   variantId: string;
@@ -105,13 +107,13 @@ export async function createOrderAfterPayment(orderData: OrderData, transactionI
 
             // 4. Actualizar stock
             const stockUpdates = orderData.stockValidation.map(validation => 
-                tx.productVariant.update({
-                    where: { id: validation.productId },
-                    data: {
-                        stock: {
-                            decrement: validation.requested
-                        }
-                    }
+                applyStockChange({
+                    tx,
+                    variantId: validation.productId,
+                    type: StockMovementType.SALE,
+                    quantityDelta: -validation.requested,
+                    reason: 'Order created after external payment confirmation',
+                    orderId: order.id,
                 })
             );
 

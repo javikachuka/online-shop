@@ -4,6 +4,7 @@ import {prisma} from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth.config";
 import { v2 as cloudinary } from 'cloudinary'
+import { StockMovementType } from "@prisma/client";
 cloudinary.config(process.env.CLOUDINARY_URL || "");
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
@@ -109,10 +110,11 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
 
                 const existingVariants = await tx.productVariant.findMany({
                     where: { productId: id },
-                    select: { id: true }
+                    select: { id: true, stock: true }
                 });
 
                 const existingVariantIds = existingVariants.map((v) => v.id);
+                const existingVariantStockById = new Map(existingVariants.map((v) => [v.id, v.stock]));
                 const incomingVariantIds = variants
                     .map((v: any) => v.id)
                     .filter((variantId: string | undefined) => !!variantId);
@@ -134,7 +136,6 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                 for (const variant of variants) {
                     const variantData = {
                         price: Number(variant.price),
-                        stock: Number(variant.stock),
                         sku: variant.sku || null,
                         discountPercent: Number(variant.discountPercent || 0),
                         order: Number(variant.order || 0),
@@ -145,6 +146,12 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                             where: { id: variant.id },
                             data: variantData,
                         });
+
+                        // El stock de variantes existentes se gestiona solo por movimientos,
+                        // no desde el formulario de edición del producto.
+                        if (existingVariantStockById.get(variant.id) === undefined) {
+                            throw new Error(`No se encontró la variante existente ${variant.id}`);
+                        }
 
                         const incomingAttributes = (variant.attributes || []).map((attr: any) => ({
                             attributeId: attr.attributeId,
@@ -185,9 +192,10 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                             });
                         }
                     } else {
-                        await tx.productVariant.create({
+                        const createdVariant = await tx.productVariant.create({
                             data: {
                                 ...variantData,
+                                stock: Number(variant.stock),
                                 productId: id,
                                 attributes: {
                                     create: (variant.attributes || []).map((attr: any) => ({
@@ -197,6 +205,20 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                                 }
                             }
                         });
+
+                        if (Number(variant.stock) !== 0) {
+                            await tx.stockMovement.create({
+                                data: {
+                                    variantId: createdVariant.id,
+                                    type: StockMovementType.INITIAL,
+                                    quantity: Number(variant.stock),
+                                    stockBefore: 0,
+                                    stockAfter: Number(variant.stock),
+                                    reason: 'Initial stock for new variant',
+                                    actorUserId: userId,
+                                }
+                            });
+                        }
                     }
                 }
             } else {
@@ -208,24 +230,43 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                         imageGroupingAttributeId: visualAttributeId,
                         categories: {
                             create: categories.map(catId => ({ categoryId: catId }))
-                        },
-                        variants: {
-                            create: variants.map((v: any) => ({
-                                price: Number(v.price),
-                                stock: Number(v.stock),
-                                sku: v.sku,
-                                discountPercent: Number(v.discountPercent || 0),
-                                order: Number(v.order || 0),
-                                attributes: {
-                                    create: v.attributes.map((attr: any) => ({
-                                        attributeId: attr.attributeId,
-                                        valueId: attr.valueId
-                                    }))
-                                }
-                            }))
                         }
                     }
                 });
+
+                for (const variant of variants) {
+                    const initialStock = Number(variant.stock);
+                    const createdVariant = await tx.productVariant.create({
+                        data: {
+                            price: Number(variant.price),
+                            stock: initialStock,
+                            sku: variant.sku || null,
+                            discountPercent: Number(variant.discountPercent || 0),
+                            order: Number(variant.order || 0),
+                            productId: currentProduct.id,
+                            attributes: {
+                                create: (variant.attributes || []).map((attr: any) => ({
+                                    attributeId: attr.attributeId,
+                                    valueId: attr.valueId
+                                }))
+                            }
+                        }
+                    });
+
+                    if (initialStock !== 0) {
+                        await tx.stockMovement.create({
+                            data: {
+                                variantId: createdVariant.id,
+                                type: StockMovementType.INITIAL,
+                                quantity: initialStock,
+                                stockBefore: 0,
+                                stockAfter: initialStock,
+                                reason: 'Initial stock for product creation',
+                                actorUserId: userId,
+                            }
+                        });
+                    }
+                }
             }
 
             const groupVariantIdsCache = new Map<string, string[]>();

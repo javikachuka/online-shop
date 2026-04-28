@@ -5,6 +5,8 @@ import { Address, PaymentMethod } from "@/interfaces";
 import { calculateShippingCost } from "@/actions/shipping/calculate-shipping";
 import { prisma } from "@/lib/prisma";
 import { sendOrderTransferInstructionsEmail } from "@/lib/order-email";
+import { applyStockChange } from "@/lib/stock-movements";
+import { StockMovementType } from "@prisma/client";
 
 
 interface ProductToOrder {
@@ -131,13 +133,13 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
                     );
                 }
 
-                return tx.productVariant.update({
-                    where: { id: product.id },
-                    data: {
-                        stock: {
-                            decrement: productQuantity
-                        }
-                    }
+                return applyStockChange({
+                    tx,
+                    variantId: product.id,
+                    type: StockMovementType.SALE,
+                    quantityDelta: -productQuantity,
+                    reason: 'Order creation with immediate stock deduction',
+                    actorUserId: userId,
                 });
             });
             

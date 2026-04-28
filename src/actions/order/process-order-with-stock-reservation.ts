@@ -3,6 +3,8 @@
 import {prisma} from "@/lib/prisma";
 import { validateMercadoPagoPayment } from "../payments/validate-mercadopago-payment";
 import { auth } from "@/auth.config";
+import { applyStockChange } from "@/lib/stock-movements";
+import { StockMovementType } from "@prisma/client";
 import { 
     reserveStock, 
     completeStockReservation, 
@@ -326,13 +328,13 @@ export const createOrderWithReservedStock = async (
                 });
 
                 // Actualizar stock real (el stock ya estaba "reservado")
-                await tx.productVariant.update({
-                    where: { id: item.variantId },
-                    data: {
-                        stock: {
-                            decrement: item.quantity
-                        }
-                    }
+                await applyStockChange({
+                    tx,
+                    variantId: item.variantId,
+                    type: StockMovementType.SALE,
+                    quantityDelta: -item.quantity,
+                    reason: 'Reserved stock finalized after payment',
+                    orderId: order.id,
                 });
             }
 

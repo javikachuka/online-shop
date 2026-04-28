@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { sendOrderPaymentConfirmationEmail } from '@/lib/order-email';
+import { applyStockChange } from '@/lib/stock-movements';
+import { StockMovementType } from '@prisma/client';
 
 const mercadopago = new MercadoPagoConfig({
     accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!
@@ -299,13 +301,13 @@ async function completeStockReservation(tx: any, order: any, fallbackKey?: strin
 
     // Descontar stock definitivamente
     for (const item of order.OrderItem) {
-        await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: {
-                stock: {
-                    decrement: item.quantity
-                }
-            }
+        await applyStockChange({
+            tx,
+            variantId: item.variantId,
+            type: StockMovementType.SALE,
+            quantityDelta: -item.quantity,
+            reason: 'MercadoPago webhook approved payment',
+            orderId: order.id,
         });
     }
 

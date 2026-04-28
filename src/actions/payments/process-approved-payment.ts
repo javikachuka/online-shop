@@ -3,6 +3,8 @@
 import { validateMercadoPagoPayment } from './validate-mercadopago-payment';
 import { prisma } from '@/lib/prisma';
 import { sendOrderPaymentConfirmationEmail } from '@/lib/order-email';
+import { applyStockChange } from '@/lib/stock-movements';
+import { StockMovementType } from '@prisma/client';
 
 interface ProcessApprovedPaymentResult {
     ok: boolean;
@@ -162,13 +164,13 @@ async function handleApprovedPayment(
 
             // Descontar stock definitivamente (las reservas ya están activas)
             const stockUpdates = order.OrderItem.map(item =>
-                tx.productVariant.update({
-                    where: { id: item.variantId },
-                    data: {
-                        stock: {
-                            decrement: item.quantity
-                        }
-                    }
+                applyStockChange({
+                    tx,
+                    variantId: item.variantId,
+                    type: StockMovementType.SALE,
+                    quantityDelta: -item.quantity,
+                    reason: 'Payment approved and order finalized',
+                    orderId: order.id,
                 })
             );
 
