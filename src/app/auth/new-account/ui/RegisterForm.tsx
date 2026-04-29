@@ -85,8 +85,17 @@ export const RegisterForm = () => {
             <input
                 className={`px-5 py-2 border bg-gray-200 rounded mb-5 ${errors.password ? 'border-red-500' : '' }`}
                 type="password"
-                {...register('password', {required: true, minLength: 8})}
+                {...register('password', {
+                    required: 'La contraseña es obligatoria',
+                    minLength: {
+                        value: 8,
+                        message: 'La contraseña debe tener al menos 8 caracteres'
+                    }
+                })}
             />
+            {errors.password && (
+                <span className="text-red-500 text-sm -mt-3 mb-5 block">{errors.password.message}</span>
+            )}
 
             {/* Campos adicionales opcionales */}
             <div className="mb-5">
