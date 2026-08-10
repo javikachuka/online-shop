@@ -4,8 +4,14 @@ import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 import { prisma } from './lib/prisma'; // Usar la instancia singleton
 import bcryptjs from 'bcryptjs';
+
+const baseUrl = process.env.AUTH_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
  
 export const authConfig = {
+  trustHost: true,
+  secret: process.env.AUTH_SECRET,
+  basePath: '/api/auth',
+  ...((baseUrl ? { baseUrl } : {})),
   pages: {
     signIn: '/auth/login',
     newUser: '/auth/new-account',

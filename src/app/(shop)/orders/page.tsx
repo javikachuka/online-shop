@@ -7,14 +7,14 @@ import { redirect } from "next/navigation";
 import { IoBanOutline, IoCardOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
 
 interface Props {
-    searchParams: {
+    searchParams: Promise<{
         page?: string;
-    };
+    }>;
 }
 
 export default async function OrdersPage({ searchParams }: Props) {
-    // Aquí podrías obtener las órdenes del usuario
-    const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const resolvedSearchParams = await searchParams;
+    const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
 
     const { orders, totalPages = 1, ok } = await getOrdersByUser(page);
 

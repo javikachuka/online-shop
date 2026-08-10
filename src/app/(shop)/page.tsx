@@ -21,16 +21,15 @@ export const metadata: Metadata = {
 };
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     page?: string
-  }
+  }>
 }
 
 
 export default async function ShopPage({searchParams} : Props) {
-
-
-  const page = searchParams.page ? parseInt(searchParams.page) : 1
+  const resolvedSearchParams = await searchParams;
+  const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1
 
   const {products, totalPages} = await getPaginatedProductsWithImages({page}) 
 

@@ -8,13 +8,13 @@ import { redirect } from "next/navigation";
 import { IoCartOutline, IoWalletOutline } from "react-icons/io5";
 
 interface Props {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function CategoryPage({ params }: Props) {
-    const { id } = params;
+    const { id } = await params;
 
     const orderData = await getOrderByIdAdmin(id);
     

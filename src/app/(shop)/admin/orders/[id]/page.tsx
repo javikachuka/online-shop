@@ -8,13 +8,13 @@ import { IoBanOutline, IoWalletOutline, IoCheckmarkCircleOutline, IoTimeOutline,
 import { ConfirmOrderActions } from "./ConfirmOrderActions.client";
 
 interface Props {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function CategoryPage({ params }: Props) {
-    const { id } = params;
+    const { id } = await params;
 
     const orderData = await getOrderByIdAdmin(id);
 

@@ -5,14 +5,15 @@ import { auth } from '@/auth.config';
 import { redirect } from 'next/navigation';
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     redirectTo?: string;
-  };
+  }>;
 }
 
 export default async function LoginPage({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams;
   const session = await auth();
-  const rawRedirectTo = searchParams.redirectTo ?? '/';
+  const rawRedirectTo = resolvedSearchParams.redirectTo ?? '/';
   const redirectTo = rawRedirectTo.startsWith('/') && !rawRedirectTo.startsWith('//')
     ? rawRedirectTo
     : '/';

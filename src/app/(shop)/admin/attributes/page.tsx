@@ -13,14 +13,14 @@ import Image from "next/image";
 import { getPaginatedAttributes } from "@/actions";
 
 interface Props {
-    searchParams: {
+    searchParams: Promise<{
         page?: string;
-    };
+    }>;
 }
 
 export default async function AttributesPage({ searchParams }: Props) {
-    // Aquí podrías obtener las órdenes del usuario
-    const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const resolvedSearchParams = await searchParams;
+    const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
 
     const { attributes, totalPages, ok } = await getPaginatedAttributes(page);
 

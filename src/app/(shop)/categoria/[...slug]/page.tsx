@@ -8,17 +8,19 @@ import { Metadata, ResolvingMetadata } from "next";
 import { getProductsByCategoryId } from '@/actions/category/getProductsByCategoryId';
 
 interface Props {
-  params: {
+  params: Promise<{
     slug: string[];
-  };
-  searchParams: {
+  }>;
+  searchParams: Promise<{
     page?: string;
-  };
+  }>;
 }
 
 export default async function CategoryPage({ params, searchParams }: Props) {
-  const slugArray = params.slug || [];
-  const page = searchParams.page ? parseInt(searchParams.page) : 1;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const slugArray = resolvedParams.slug || [];
+  const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
 
   // Busca la categoría actual por la ruta completa
   const category = await getCategoryBySlugPath(slugArray);
@@ -51,7 +53,8 @@ export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const slugArray = params.slug || [];
+  const resolvedParams = await params;
+  const slugArray = resolvedParams.slug || [];
   const category = await getCategoryBySlugPath(slugArray);
 
   if (!category) {

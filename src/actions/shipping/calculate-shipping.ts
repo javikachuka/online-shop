@@ -119,7 +119,7 @@ export const getShippingOptions = async (address: Address, subTotal: number, dis
  * @param cartTotal Total del carrito
  * @returns boolean
  */
-export const qualifiesForFreeShipping = (cartTotal: number): boolean => {
+export const qualifiesForFreeShipping = async (cartTotal: number): Promise<boolean> => {
     return cartTotal >= DEFAULT_SHIPPING_CONFIG.freeShippingThreshold;
 };
 
@@ -128,8 +128,8 @@ export const qualifiesForFreeShipping = (cartTotal: number): boolean => {
  * @param cartTotal Total del carrito
  * @returns Monto restante o 0 si ya califica
  */
-export const getAmountForFreeShipping = (cartTotal: number): number => {
-    if (qualifiesForFreeShipping(cartTotal)) {
+export const getAmountForFreeShipping = async (cartTotal: number): Promise<number> => {
+    if (await qualifiesForFreeShipping(cartTotal)) {
         return 0;
     }
     return DEFAULT_SHIPPING_CONFIG.freeShippingThreshold - cartTotal;

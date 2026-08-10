@@ -12,14 +12,14 @@ import { IoCardOutline } from "react-icons/io5";
 import { UsersTable } from "./ui/UsersTable";
 
 interface Props {
-    searchParams: {
+    searchParams: Promise<{
         page?: string;
-    };
+    }>;
 }
 
 export default async function OrdersPage({ searchParams }: Props) {
-    // Aquí podrías obtener las órdenes del usuario
-    const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const resolvedSearchParams = await searchParams;
+    const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
 
     const { users, totalPages, ok } = await getPaginatedUsers(page);
 

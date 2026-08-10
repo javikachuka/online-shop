@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import { AttributesForm } from "./ui/AttributesForm";
 
 interface Props {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function ProductPage({ params }: Props) {
-    const { id } = params;
+    const { id } = await params;
 
     const {attribute} = await getAttributeById(id);
     

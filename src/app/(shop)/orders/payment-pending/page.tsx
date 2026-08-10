@@ -1,13 +1,14 @@
 import Link from "next/link";
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     payment_id?: string;
-  }
+  }>
 }
 
-export default function PaymentPendingPage({ searchParams }: Props) {
-  const { payment_id } = searchParams;
+export default async function PaymentPendingPage({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams;
+  const { payment_id } = resolvedSearchParams;
 
   return (
     <div className="flex justify-center items-center min-h-screen">

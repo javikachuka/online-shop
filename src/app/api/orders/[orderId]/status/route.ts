@@ -4,7 +4,7 @@ import {prisma} from '@/lib/prisma';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { orderId: string } }
+    { params }: { params: Promise<{ orderId: string }> }
 ) {
     try {
         const session = await auth();
@@ -15,7 +15,7 @@ export async function GET(
             );
         }
 
-        const { orderId } = params;
+        const { orderId } = await params;
 
         const order = await prisma.order.findFirst({
             where: {

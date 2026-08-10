@@ -7,17 +7,18 @@ import { Metadata, ResolvingMetadata } from "next";
 import { ProductVariant } from "@/interfaces";
 
 interface Props {
-  params: {
+  params: Promise<{
     slug: string
-  }
+  }>
 }
 
 export async function generateMetadata(
   { params }: Props,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
+  const resolvedParams = await params;
   // read route params
-  const slug = params.slug
+  const slug = resolvedParams.slug
  
   // fetch data
   const product = await getProductBySlug(slug)
@@ -58,7 +59,8 @@ const getAvailableFilters = (variants: ProductVariant[]) => {
 
 export default async function ProductPage({params} : Props) {
   
-  const {slug} = params
+  const resolvedParams = await params;
+  const {slug} = resolvedParams;
 
   const product = await getProductBySlug(slug)
 

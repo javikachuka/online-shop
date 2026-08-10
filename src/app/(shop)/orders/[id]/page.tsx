@@ -7,13 +7,13 @@ import { redirect } from "next/navigation";
 import { IoBanOutline, IoWalletOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
 
 interface Props {
-    params: {
+    params: Promise<{
         id: string;
-    };
+    }>;
 }
 
 export default async function CategoryPage({ params }: Props) {
-    const { id } = params;
+    const { id } = await params;
 
     const orderData = await getOrderById(id);
     const companyData = await getDefaultCompany()

@@ -9,13 +9,14 @@ import {  getPaginatedCaterories } from "@/actions";
 import { CategoriasAdminClient } from './ui/CategoriasAdminClient';
 
 interface Props {
-    searchParams: {
+    searchParams: Promise<{
         page?: string;
-    };
+    }>;
 }
 
 export default async function CategoriasPage({ searchParams }: Props) {
-    const page = searchParams.page ? parseInt(searchParams.page) : 1;
+    const resolvedSearchParams = await searchParams;
+    const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
     const { categories, totalPages, ok } = await getPaginatedCaterories(page);
     if (!ok) {
       return <div className="text-red-500 text-lg">No se pudieron cargar las categorías.</div>;

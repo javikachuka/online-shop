@@ -1,13 +1,14 @@
 import { MercadoPagoSuccessClient } from "@/components/mercadopago/MercadoPagoSuccessClient";
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     payment_id?: string;
-  }
+  }>
 }
 
-export default function PaymentSuccessPage({ searchParams }: Props) {
-  const { payment_id } = searchParams;
+export default async function PaymentSuccessPage({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams;
+  const { payment_id } = resolvedSearchParams;
 
   if (!payment_id) {
     return (

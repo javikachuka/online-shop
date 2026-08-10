@@ -2,7 +2,7 @@ import { searchProducts, SearchFilters } from '@/actions';
 import { SearchPage } from './ui/SearchPage';
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     q?: string;
     category?: string;
     minPrice?: string;
@@ -10,26 +10,28 @@ interface Props {
     sortBy?: string;
     page?: string;
     [key: string]: string | undefined;
-  };
+  }>;
 }
 
 export default async function Search({ searchParams }: Props) {
+  const resolvedSearchParams = await searchParams;
+
   const filters: SearchFilters = {
-    query: searchParams.q || '',
-    categoryId: searchParams.category,
-    minPrice: searchParams.minPrice ? parseFloat(searchParams.minPrice) : undefined,
-    maxPrice: searchParams.maxPrice ? parseFloat(searchParams.maxPrice) : undefined,
-    sortBy: (searchParams.sortBy as any) || 'relevance',
-    page: searchParams.page ? parseInt(searchParams.page) : 1,
+    query: resolvedSearchParams.q || '',
+    categoryId: resolvedSearchParams.category,
+    minPrice: resolvedSearchParams.minPrice ? parseFloat(resolvedSearchParams.minPrice) : undefined,
+    maxPrice: resolvedSearchParams.maxPrice ? parseFloat(resolvedSearchParams.maxPrice) : undefined,
+    sortBy: (resolvedSearchParams.sortBy as any) || 'relevance',
+    page: resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1,
     limit: 12
   };
 
   // Extraer filtros de atributos del searchParams
   const attributes: { [key: string]: string[] } = {};
-  Object.keys(searchParams).forEach(key => {
+  Object.entries(resolvedSearchParams).forEach(([key, value]) => {
     if (key.startsWith('attr_')) {
       const attributeId = key.replace('attr_', '');
-      const values = searchParams[key]?.split(',') || [];
+      const values = value?.split(',') || [];
       if (values.length > 0) {
         attributes[attributeId] = values;
       }

@@ -6,15 +6,16 @@ import { Pagination, Title } from '@/components';
 import { StockAdminPanel } from './ui/StockAdminPanel';
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     q?: string;
-  };
+  }>;
 }
 
 export default async function AdminStockPage({ searchParams }: Props) {
-  const page = searchParams.page ? parseInt(searchParams.page, 10) : 1;
-  const query = searchParams.q ?? '';
+  const resolvedSearchParams = await searchParams;
+  const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page, 10) : 1;
+  const query = resolvedSearchParams.q ?? '';
 
   const result = await getPaginatedStockVariants(page, 20, query);
 

@@ -2,15 +2,16 @@ import { createOrderAfterPayment } from "@/actions";
 import { redirect } from "next/navigation";
 
 interface Props {
-  searchParams: {
+  searchParams: Promise<{
     payment_id?: string;
     status?: string;
     merchant_order_id?: string;
-  }
+  }>
 }
 
 export default async function MercadoPagoReturnPage({ searchParams }: Props) {
-  const { payment_id, status, merchant_order_id } = searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { payment_id, status, merchant_order_id } = resolvedSearchParams;
 
   // Si no tenemos los parámetros necesarios, redirigir al checkout
   if (!payment_id || !status) {

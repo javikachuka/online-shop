@@ -1,12 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  // DESHABILITADO: Usar layouts en su lugar para validar sesión
-  // El middleware con getToken() en Edge Runtime causa problemas de redirection loop en Vercel
-  // si AUTH_SECRET no está configurado correctamente
+  // Defense-in-depth: block external requests carrying internal Next.js headers.
+  const hasMiddlewareSubrequestHeader = req.headers.has("x-middleware-subrequest");
+  const hasNextResumeHeader = req.headers.has("next-resume");
+
+  if (hasMiddlewareSubrequestHeader || hasNextResumeHeader) {
+    return NextResponse.json({ error: "Invalid request headers" }, { status: 400 });
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/orders/:path*", "/profile/:path*", "/checkout/:path*", "/admin/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };
