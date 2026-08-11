@@ -25,6 +25,17 @@ export async function authenticate(
   }
 }
 
+export async function authenticateWithGoogle(formData: FormData) {
+  const rawRedirectTo = String(formData.get('redirectTo') || '/');
+  const redirectTo = rawRedirectTo.startsWith('/') && !rawRedirectTo.startsWith('//')
+    ? rawRedirectTo
+    : '/';
+
+  await signIn('google', {
+    redirectTo,
+  });
+}
+
 
 export const login = async (email: string, password: string) => {
 
