@@ -40,6 +40,7 @@ export * from './category/getProductsByCategorySlug'
 export * from './category/get-all-enable-categories'
 export * from './category/get-paginated-cateogories'
 
+export * from './attributes/add-attribute-value'
 export * from './attributes/get-all-attributes'
 export * from './attributes/get-paginated-attributes'
 export * from './attributes/get-attribute-by-id'

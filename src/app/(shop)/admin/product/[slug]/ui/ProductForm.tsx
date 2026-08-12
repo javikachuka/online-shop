@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { CategoryCheckboxTree } from "./CategoryCheckboxTree";
 import { useForm } from "react-hook-form";
 import { IoCloseOutline } from "react-icons/io5";
-import { saveOrUpdateProduct } from "@/actions";
+import { saveOrUpdateProduct, addAttributeValue } from "@/actions";
 import { Toaster, toast } from 'sonner';
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/modal/Modal"; // Asume que tienes un componente Modal reutilizable
@@ -44,12 +44,64 @@ interface NewGroupedImage {
 export const ProductForm = ({
     product,
     categories = [],
-    attributes = [],
+    attributes: attributesProp = [],
 }: Props) => {
     const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
     const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 
     const router = useRouter()
+
+    // Copia local editable de los atributos: permite reflejar al instante los valores
+    // que el usuario crea desde este mismo formulario, sin recargar la página.
+    const [attributes, setAttributes] = useState<AttributeWithValues[]>(attributesProp);
+    const [creatingValueFor, setCreatingValueFor] = useState<string | null>(null);
+    const [newValueDraft, setNewValueDraft] = useState("");
+    const [isCreatingValue, setIsCreatingValue] = useState(false);
+
+    useEffect(() => {
+        setAttributes(attributesProp);
+    }, [attributesProp]);
+
+    const openCreateValueFor = (attributeId: string) => {
+        setCreatingValueFor(attributeId);
+        setNewValueDraft("");
+    };
+
+    const cancelCreateValue = () => {
+        setCreatingValueFor(null);
+        setNewValueDraft("");
+    };
+
+    // Crea el nuevo valor en el backend y lo agrega a la copia local de atributos
+    // para que quede disponible de inmediato en todos los selectores del formulario.
+    const handleCreateAttributeValue = async (attributeId: string, onCreated?: (value: string) => void) => {
+        const trimmed = newValueDraft.trim();
+        if (!trimmed) {
+            toast.error("Ingresa un valor válido");
+            return;
+        }
+        setIsCreatingValue(true);
+        try {
+            const result = await addAttributeValue(attributeId, trimmed);
+            if (!result.ok || !result.value) {
+                toast.error(result.error || "No se pudo crear el valor");
+                return;
+            }
+            const createdValue = result.value;
+            setAttributes((prev) =>
+                prev.map((attr) =>
+                    attr.id === attributeId
+                        ? { ...attr, values: [...attr.values, createdValue] }
+                        : attr
+                )
+            );
+            toast.success(`Valor "${createdValue.value}" agregado`);
+            onCreated?.(createdValue.value);
+            cancelCreateValue();
+        } finally {
+            setIsCreatingValue(false);
+        }
+    };
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
         []
     );
@@ -455,6 +507,7 @@ export const ProductForm = ({
     };
     const closeVariantModal = () => {
         setVariantModalOpen(false);
+        cancelCreateValue();
         setNewVariant({
             price: getDefaultVariantPrice(),
             stock: "1",
@@ -847,9 +900,10 @@ export const ProductForm = ({
                         return (
                         <div key={id} className="mb-4">
                             <label className="text-xs font-bold text-gray-500 mb-1 block">VALORES PARA {attr?.name}:</label>
-                            <select 
-                            multiple 
+                            <select
+                            multiple
                             className="w-full border p-2 rounded-md h-32 text-sm focus:ring-2 focus:ring-blue-500"
+                            value={selectedValuesForMatrix[id] || []}
                             onChange={(e) => {
                                 const vals = Array.from(e.target.selectedOptions).map(o => o.value);
                                 setSelectedValuesForMatrix(prev => ({ ...prev, [id]: vals }));
@@ -858,6 +912,61 @@ export const ProductForm = ({
                             {attr?.values.map(v => <option key={v.id} value={v.value}>{v.value}</option>)}
                             </select>
                             <p className="text-[10px] text-gray-400 mt-1">Mantén presionado Ctrl (o Cmd) para seleccionar varios</p>
+
+                            {creatingValueFor === id ? (
+                                <div className="mt-2 flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        autoFocus
+                                        placeholder={`Nuevo valor para ${attr?.name}`}
+                                        className="flex-1 p-1.5 border rounded-md text-sm"
+                                        value={newValueDraft}
+                                        onChange={(e) => setNewValueDraft(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                handleCreateAttributeValue(id, (value) => {
+                                                    setSelectedValuesForMatrix(prev => ({
+                                                        ...prev,
+                                                        [id]: [...(prev[id] || []), value],
+                                                    }));
+                                                });
+                                            }
+                                            if (e.key === "Escape") cancelCreateValue();
+                                        }}
+                                        disabled={isCreatingValue}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                                        disabled={isCreatingValue}
+                                        onClick={() => handleCreateAttributeValue(id, (value) => {
+                                            setSelectedValuesForMatrix(prev => ({
+                                                ...prev,
+                                                [id]: [...(prev[id] || []), value],
+                                            }));
+                                        })}
+                                    >
+                                        {isCreatingValue ? "..." : "Guardar"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="text-xs text-gray-500 hover:text-gray-700"
+                                        onClick={cancelCreateValue}
+                                        disabled={isCreatingValue}
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-800"
+                                    onClick={() => openCreateValueFor(id)}
+                                >
+                                    + ¿No está el valor que buscas? Agregar uno nuevo
+                                </button>
+                            )}
                         </div>
                         );
                     })}
@@ -1151,6 +1260,53 @@ export const ProductForm = ({
                                         <option key={val.id} value={val.value}>{val.value}</option>
                                     ))}
                                 </select>
+
+                                {creatingValueFor === attr.id ? (
+                                    <div className="mt-1 flex flex-col gap-1">
+                                        <input
+                                            type="text"
+                                            autoFocus
+                                            placeholder="Nuevo valor"
+                                            className="p-1 border rounded-md text-xs w-32"
+                                            value={newValueDraft}
+                                            onChange={(e) => setNewValueDraft(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    handleCreateAttributeValue(attr.id, (value) => handleAttributeValueChange(attr.id, value));
+                                                }
+                                                if (e.key === "Escape") cancelCreateValue();
+                                            }}
+                                            disabled={isCreatingValue}
+                                        />
+                                        <div className="flex gap-1">
+                                            <button
+                                                type="button"
+                                                className="bg-green-600 text-white text-[10px] font-bold px-2 py-0.5 rounded disabled:bg-gray-400"
+                                                disabled={isCreatingValue}
+                                                onClick={() => handleCreateAttributeValue(attr.id, (value) => handleAttributeValueChange(attr.id, value))}
+                                            >
+                                                {isCreatingValue ? "..." : "Guardar"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="text-[10px] text-gray-500 hover:text-gray-700"
+                                                onClick={cancelCreateValue}
+                                                disabled={isCreatingValue}
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="mt-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800 text-left"
+                                        onClick={() => openCreateValueFor(attr.id)}
+                                    >
+                                        + Agregar valor
+                                    </button>
+                                )}
                             </div>
                         ))}
                     <div className="flex flex-col w-full">
