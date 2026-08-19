@@ -3,9 +3,8 @@
 import {prisma} from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth.config";
-import { v2 as cloudinary } from 'cloudinary'
+import { getCloudinary } from "@/lib/cloudinary";
 import { StockMovementType } from "@prisma/client";
-cloudinary.config(process.env.CLOUDINARY_URL || "");
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
@@ -408,6 +407,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                 // const imageUrls = await uploadImages(files); 
                 
                 // Ejemplo manual de subida si no tienes el helper a mano:
+                const cloudinary = getCloudinary();
                 const uploadPromises = files.map(async (file) => {
                     const buffer = await file.arrayBuffer();
                     const base64Image = Buffer.from(buffer).toString('base64');

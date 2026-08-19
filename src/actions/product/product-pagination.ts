@@ -1,6 +1,7 @@
 'use server'
 
 import {prisma} from "@/lib/prisma"
+import { withDbRetry } from "@/lib/db-retry"
 
 
 interface PaginationOptions {
@@ -17,7 +18,7 @@ export const getPaginatedProductsWithImages = async ({page = 1, take = 12}: Pagi
 
 
     try {
-        const products = await prisma.product.findMany({
+        const products = await withDbRetry(() => prisma.product.findMany({
             take: take,
             skip: (page - 1) * take,
             where: {
@@ -55,11 +56,11 @@ export const getPaginatedProductsWithImages = async ({page = 1, take = 12}: Pagi
                     }
                 }
             },
-        })
+        }))
 
-        const totalCount = await prisma.product.count({
+        const totalCount = await withDbRetry(() => prisma.product.count({
             where: {isEnabled: true}
-        })
+        }))
 
         const totalPages = Math.ceil(totalCount / take)
 

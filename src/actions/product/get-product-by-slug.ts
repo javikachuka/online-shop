@@ -1,12 +1,13 @@
 'use server'
 
 import {prisma} from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 
 export const getProductBySlug = async (slug: string) => {
 
     try {
 
-        const product = await prisma.product.findFirst({
+        const product = await withDbRetry(() => prisma.product.findFirst({
             include: {
                 ProductImage: {
                     orderBy: {
@@ -73,7 +74,7 @@ export const getProductBySlug = async (slug: string) => {
             where: {
                 slug: slug
             }
-        })
+        }))
 
         if(!product) return null
 
