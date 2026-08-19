@@ -59,6 +59,33 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         // Si ninguna combinación tiene stock, retorna vacío
         return {};
     };
+
+    // Toma la selección desde los query params (link compartido) si es una combinación válida.
+    // Se lee window.location directamente (en vez de hooks de next/navigation) para no forzar
+    // este componente a un render dinámico que remonte el slideshow de Swiper.
+    const getSelectionFromUrl = () => {
+        if (typeof window === "undefined") return null;
+
+        const attributeNames = Object.keys(filters);
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromUrl = Object.fromEntries(
+            attributeNames
+                .map((attrName) => [attrName, urlParams.get(attrName)])
+                .filter(([attrName, value]) => value && filters[attrName as string].includes(value as string))
+        ) as { [attrName: string]: string };
+
+        const allAttributesPresent = attributeNames.length > 0 && attributeNames.every((name) => fromUrl[name]);
+        if (!allAttributesPresent) return null;
+
+        const matchedVariant = variants.find((variant) =>
+            attributeNames.every((attrName) =>
+                variant.attributes.some(
+                    (attr) => attr.attribute.name === attrName && attr.value.value === fromUrl[attrName]
+                )
+            )
+        );
+        return matchedVariant ? fromUrl : null;
+    };
     const [selectedAttributes, setSelectedAttributes] = useState<{ [attrName: string]: string }>(getDefaultSelectedAttributes());
     const [quantity, setQuantity] = useState<number>(1);
     const [errorSelection, setErrorSelection] = useState(false);
@@ -137,6 +164,19 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         
         setQuantity(1);
     }, [selectedAttributes, filters, variants, onVariantChange]);
+
+    // Aplica, una sola vez y ya montado en el cliente, la selección proveniente de un link compartido.
+    // No se refleja la selección de vuelta en la barra de direcciones: la URL visible se mantiene
+    // siempre la del producto (sin query params) para que coincida con lo que el usuario vio al
+    // hacer hover/click desde el listado. El link con la variante seleccionada se genera bajo demanda
+    // en ShareProduct al momento de compartir.
+    useEffect(() => {
+        const selectionFromUrl = getSelectionFromUrl();
+        if (selectionFromUrl) {
+            setSelectedAttributes(selectionFromUrl);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (selectedVariantData && !isAvailabilityLoading) {

@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    // Swiper (thumbs gallery) se rompe con el doble montaje de efectos de Strict Mode en desarrollo
+    reactStrictMode: false,
     images: {
         remotePatterns: [
             {

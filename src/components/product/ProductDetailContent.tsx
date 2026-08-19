@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FilterAttributes, SlideShowSwitcher } from "@/components";
+import { FilterAttributes, ShareProduct, SlideShowSwitcher } from "@/components";
 import { titleFont } from "@/config/fonts";
 import { Product, ProductVariant } from "@/interfaces";
 
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const ProductDetailContent = ({ product, filters }: Props) => {
-    const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+    const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
     return (
         <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto">
@@ -21,7 +21,7 @@ export const ProductDetailContent = ({ product, filters }: Props) => {
                     images={product.ProductImage || []}
                     variants={product.variants || []}
                     imageGroupingAttributeId={product.imageGroupingAttributeId}
-                    selectedVariantId={selectedVariantId}
+                    selectedVariantId={selectedVariant?.id ?? null}
                 />
             </div>
 
@@ -33,8 +33,10 @@ export const ProductDetailContent = ({ product, filters }: Props) => {
                 <FilterAttributes
                     product={product}
                     filters={filters}
-                    onVariantChange={(variant: ProductVariant | null) => setSelectedVariantId(variant?.id ?? null)}
+                    onVariantChange={(variant: ProductVariant | null) => setSelectedVariant(variant)}
                 />
+
+                <ShareProduct productTitle={product.title} variantAttributes={selectedVariant?.attributes} />
 
                 <h2 className="font-bold text-sm mt-4">Descripción</h2>
                 <p className="font-light text-gray-700">{product.description}</p>

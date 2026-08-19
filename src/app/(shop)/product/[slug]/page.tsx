@@ -34,6 +34,11 @@ export async function generateMetadata(
       description: product?.description || ' ',
       images: [`/products/${product?.ProductImage[0]?.url}`],
     },
+    // La variante seleccionada se refleja solo como query params al compartir; para indexación
+    // siempre debe consolidarse en la URL base del producto, sin params.
+    alternates: {
+      canonical: `/product/${slug}`,
+    },
   }
 }
 

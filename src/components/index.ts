@@ -10,6 +10,7 @@ export * from './products/product-list/ProductList'
 export * from './product/quantity-selector/QuantitySelector'
 export * from './product/filter-attributes/FilterAttributes'
 export * from './product/product-image/ProductImage'
+export * from './product/share-product/ShareProduct'
 
 
 export * from './slideshow/ProductSlidesShow'
