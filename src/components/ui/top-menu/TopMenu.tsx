@@ -45,6 +45,7 @@ export const TopMenu = ({categories = [], company}: Props) => {
                         className="object-contain max-h-[50px] max-md:object-left"
                         width={112}
                         height={40}
+                        priority
                       />
                     : <span>Name | Shop</span>
                 }

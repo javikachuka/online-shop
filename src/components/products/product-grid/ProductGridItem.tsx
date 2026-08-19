@@ -8,10 +8,11 @@ import { useState } from "react"
 
 interface Props {
     product: Product
+    priority?: boolean
 }
 
 
-export const ProductGridItem = ({product}:Props) => {
+export const ProductGridItem = ({product, priority = false}:Props) => {
 
 
     const [displayImage, setDisplayImage] = useState(product.ProductImage?.[0]?.url)
@@ -41,6 +42,8 @@ export const ProductGridItem = ({product}:Props) => {
                     className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                     width={500}
                     height={625}
+                    priority={priority}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
             </div>
         </Link>

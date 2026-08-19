@@ -8,6 +8,7 @@ interface Props {
     height?: number;
     fill?: boolean;
     sizes?: string;
+    priority?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
 }
@@ -20,6 +21,7 @@ export const ProductImage = ({
     height,
     fill = false,
     sizes,
+    priority = false,
     onMouseEnter,
     onMouseLeave
 }: Props) => {
@@ -37,7 +39,9 @@ export const ProductImage = ({
                 alt={alt} 
                 className={className}
                 fill
-                sizes={sizes}
+                sizes={sizes || '(max-width: 768px) 50vw, 33vw'}
+                priority={priority}
+                loading={priority ? undefined : 'lazy'}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
             />
@@ -51,6 +55,9 @@ export const ProductImage = ({
             className={className} 
             width={width || 300} 
             height={height || 300}
+            sizes={sizes || '(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw'}
+            priority={priority}
+            loading={priority ? undefined : 'lazy'}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         />
