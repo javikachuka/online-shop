@@ -19,10 +19,9 @@ export default async function ShopLayout({
         </Suspense>
         <TopMenu categories={links.data as any} company={companyInfo.company} />
         <Sidebar categories={links.data as any}/>
+        {/* Sin Suspense genérico: evita el salto de "Loading..." -> contenido real (CLS) */}
         <div className="px-0 md:px-10">
-          <Suspense fallback={<div>Loading...</div>}> 
-            {children}
-          </Suspense>
+          {children}
         </div>
         <Footer />
         {/* WhatsApp Float Button - aparece en todas las páginas */}
