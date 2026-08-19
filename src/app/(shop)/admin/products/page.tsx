@@ -4,22 +4,25 @@ export const dynamic = 'force-dynamic';
 // O alternativamente:
 export const revalidate = 0;
 import { getPaginatedProducts } from "@/actions/product/get-paginated-products";
-import { Pagination, ProductImage, Title } from "@/components";
+import { Pagination, ProductImage, SearchForm, Title } from "@/components";
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 interface Props {
     searchParams: Promise<{
         page?: string;
+        q?: string | string[];
     }>;
 }
 
 export default async function OrdersPage({ searchParams }: Props) {
     const resolvedSearchParams = await searchParams;
     const page = resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1;
+    const query = typeof resolvedSearchParams.q === 'string'
+        ? resolvedSearchParams.q.trim().slice(0, 100)
+        : '';
 
-    const { products, totalPages, ok } = await getPaginatedProducts(page);
+    const { products, totalPages, ok } = await getPaginatedProducts(page, 10, query);
 
     return (
         <>
@@ -31,7 +34,13 @@ export default async function OrdersPage({ searchParams }: Props) {
                 </div>
             ) : (
                 <>
-                <div className="flex justify-end mb-5">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <SearchForm
+                        action="/admin/products"
+                        defaultValue={query}
+                        label="Buscar productos"
+                        placeholder="Buscar por título, SKU o slug..."
+                    />
                     <Link href={'/admin/product/new'} className="btn-primary">
                         Nuevo Producto
                     </Link>

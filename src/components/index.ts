@@ -23,6 +23,7 @@ export * from './ui/title/Title'
 export * from './ui/footer/Footer'
 export * from './ui/pagination/Pagination'
 export * from './ui/search/SearchInput'
+export * from './ui/search/SearchForm'
 export * from './ui/search/MobileSearchModal'
 
 export * from './paypal/PayPalButton'

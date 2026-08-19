@@ -2,10 +2,28 @@
 
 import { auth } from "@/auth.config";
 import {prisma} from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
-export const getPaginatedProducts = async (page: number = 1, take: number = 10) => {
+export const getPaginatedProducts = async (
+    page: number = 1,
+    take: number = 10,
+    query: string = ''
+) => {
     if (isNaN(Number(page)) || page < 1) page = 1;
     if (isNaN(Number(take)) || take < 1) take = 10;
+    if (take > 100) take = 100;
+
+    const searchTerm = query.trim().slice(0, 100);
+    const where: Prisma.ProductWhereInput = searchTerm
+        ? {
+            OR: [
+                { title: { contains: searchTerm, mode: 'insensitive' } },
+                { slug: { contains: searchTerm, mode: 'insensitive' } },
+                { description: { contains: searchTerm, mode: 'insensitive' } },
+                { variants: { some: { sku: { contains: searchTerm, mode: 'insensitive' } } } }
+            ]
+        }
+        : {};
 
     const session = await auth();
     const userId = session?.user?.id;
@@ -27,6 +45,7 @@ export const getPaginatedProducts = async (page: number = 1, take: number = 10) 
         const products = await prisma.product.findMany({
             skip: (page - 1) * take,
             take,
+            where,
             include: {
                 ProductImage: {
                     orderBy: {
@@ -54,7 +73,7 @@ export const getPaginatedProducts = async (page: number = 1, take: number = 10) 
             ]
         });
 
-        const totalCount = await prisma.product.count({});
+        const totalCount = await prisma.product.count({ where });
         const totalPages = Math.ceil(totalCount / take);
 
         return {
