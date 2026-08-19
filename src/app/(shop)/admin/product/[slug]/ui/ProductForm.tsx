@@ -776,7 +776,7 @@ export const ProductForm = ({
         variants[editVariantIndex].id.length >= 20;
 
     return (
-        <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 mb-16 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit(handleSubmitForm)} className="grid px-5 pb-24 grid-cols-1 sm:px-0 sm:grid-cols-2 gap-3">
             {/* Textos */}
             <div className="space-y-6">
                 <section className="bg-white p-4 border rounded-md">
@@ -1194,8 +1194,9 @@ export const ProductForm = ({
                         </div>
                     </div>
                 </section>
-                
-                <button className="btn-primary w-full py-4 text-xl">
+            </div>
+            <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 px-5 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] backdrop-blur sm:px-8">
+                <button type="submit" className="btn-primary block px-6 py-3 text-lg">
                     Guardar
                 </button>
             </div>
