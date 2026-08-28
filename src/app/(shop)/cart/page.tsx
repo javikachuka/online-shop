@@ -1,7 +1,8 @@
 import { Title } from "@/components";
-import Link from "next/link";
 import { ProductsInCart } from "./ui/ProductsInCart";
 import { OrderSummary } from "./ui/OrderSummary";
+import { BeginCheckoutButton } from "./ui/BeginCheckoutButton";
+import Link from "next/link";
 
 
 
@@ -31,12 +32,7 @@ export default function CategoryPage() {
                       <OrderSummary />
 
                       <div className="mt-5 mb-2 w-full">
-                        <Link
-                          className="flex btn-primary justify-center"
-                          href={'/checkout/address'}
-                        >
-                          Continuar
-                        </Link>
+                        <BeginCheckoutButton />
                       </div>
 
                     </div>

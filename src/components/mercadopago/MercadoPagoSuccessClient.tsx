@@ -4,6 +4,8 @@ import { processApprovedPayment } from "@/actions/payments/process-approved-paym
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store";
+import { useAnalytics } from "@/hooks";
+import { hasTrackedPurchase, markPurchaseTracked } from "@/utils/analytics-dedupe";
 
 interface Props {
   paymentId: string;
@@ -19,6 +21,7 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
   const [message, setMessage] = useState<string>('Procesando tu pago...');
   const router = useRouter();
   const clearCartStorage = useCartStore(state => state.clearCart);
+  const { trackPurchase } = useAnalytics();
 
   useEffect(() => {
     const processPayment = async () => {
@@ -35,7 +38,7 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
           return;
         }
 
-        const { status: paymentStatus, orderId, message: resultMessage, clearCart } = result;
+        const { status: paymentStatus, orderId, message: resultMessage, clearCart, analytics } = result;
         setProcessedOrderId(orderId || null);
         
         // Procesar según el estado del pago
@@ -49,6 +52,20 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
                 ? 'Confirmamos tu pago y tu pedido ya quedó registrado. Te estamos llevando al detalle de la compra.'
                 : 'Tu pago fue aprobado y tu pedido ya quedó registrado.')
             );
+
+            // 📊 Disparar `purchase` una única vez por orden, con el resumen confiable del backend
+            if (analytics && orderId && !hasTrackedPurchase(orderId)) {
+              trackPurchase({
+                transaction_id: orderId,
+                value: analytics.value,
+                currency: 'ARS',
+                shipping: analytics.shipping,
+                tax: analytics.tax,
+                coupon: analytics.coupon,
+                items: analytics.items,
+              });
+              markPurchaseTracked(orderId);
+            }
             
             // 🧹 Limpiar carrito si se indica desde el server o siempre en caso de éxito
             if (clearCart || paymentStatus === 'approved' || paymentStatus === 'already_processed') {
@@ -114,7 +131,7 @@ export const MercadoPagoSuccessClient = ({ paymentId, status }: Props) => {
       setOrderStatus('error');
       setError(`Pago no aprobado. Estado recibido: ${status}`);
     }
-  }, [paymentId, status, router, clearCartStorage]);
+  }, [paymentId, status, router, clearCartStorage, trackPurchase]);
 
   if (orderStatus === 'checking') {
     return (

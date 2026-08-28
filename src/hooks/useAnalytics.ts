@@ -1,11 +1,22 @@
 'use client';
 
 import { useCallback } from 'react';
+import {
+  GaCartEvent,
+  GaLeadEvent,
+  GaPaymentInfoEvent,
+  GaPurchaseEvent,
+  GaSearchEvent,
+  GaShippingInfoEvent,
+  GaViewItemEvent,
+} from '@/types/analytics';
+
+type GaEventParams = Record<string, unknown>;
 
 export const useAnalytics = () => {
-  const trackEvent = useCallback((eventName: string, parameters?: Record<string, any>) => {
+  const trackEvent = useCallback(<T extends object>(eventName: string, parameters?: T) => {
     if (typeof window !== 'undefined' && window.gtag) {
-      window.gtag('event', eventName, parameters);
+      window.gtag('event', eventName, parameters as GaEventParams | undefined);
     }
   }, []);
 
@@ -18,46 +29,44 @@ export const useAnalytics = () => {
     }
   }, []);
 
-  const trackPurchase = useCallback((transactionData: {
-    transaction_id: string;
-    value: number;
-    currency: string;
-    items: Array<{
-      item_id: string;
-      item_name: string;
-      category: string;
-      quantity: number;
-      price: number;
-    }>;
-  }) => {
-    trackEvent('purchase', transactionData);
+  const trackPurchase = useCallback((payload: GaPurchaseEvent) => {
+    trackEvent('purchase', payload);
   }, [trackEvent]);
 
-  const trackAddToCart = useCallback((itemData: {
-    currency: string;
-    value: number;
-    items: Array<{
-      item_id: string;
-      item_name: string;
-      category: string;
-      quantity: number;
-      price: number;
-    }>;
-  }) => {
-    trackEvent('add_to_cart', itemData);
+  const trackAddToCart = useCallback((payload: GaCartEvent) => {
+    trackEvent('add_to_cart', payload);
   }, [trackEvent]);
 
-  const trackViewItem = useCallback((itemData: {
-    currency: string;
-    value: number;
-    items: Array<{
-      item_id: string;
-      item_name: string;
-      category: string;
-      price: number;
-    }>;
-  }) => {
-    trackEvent('view_item', itemData);
+  const trackRemoveFromCart = useCallback((payload: GaCartEvent) => {
+    trackEvent('remove_from_cart', payload);
+  }, [trackEvent]);
+
+  const trackViewItem = useCallback((payload: GaViewItemEvent) => {
+    trackEvent('view_item', payload);
+  }, [trackEvent]);
+
+  const trackViewCart = useCallback((payload: GaCartEvent) => {
+    trackEvent('view_cart', payload);
+  }, [trackEvent]);
+
+  const trackBeginCheckout = useCallback((payload: GaCartEvent) => {
+    trackEvent('begin_checkout', payload);
+  }, [trackEvent]);
+
+  const trackAddShippingInfo = useCallback((payload: GaShippingInfoEvent) => {
+    trackEvent('add_shipping_info', payload);
+  }, [trackEvent]);
+
+  const trackAddPaymentInfo = useCallback((payload: GaPaymentInfoEvent) => {
+    trackEvent('add_payment_info', payload);
+  }, [trackEvent]);
+
+  const trackGenerateLead = useCallback((payload: GaLeadEvent) => {
+    trackEvent('generate_lead', payload);
+  }, [trackEvent]);
+
+  const trackSearch = useCallback((payload: GaSearchEvent) => {
+    trackEvent('search', payload);
   }, [trackEvent]);
 
   return {
@@ -65,6 +74,13 @@ export const useAnalytics = () => {
     trackPageView,
     trackPurchase,
     trackAddToCart,
+    trackRemoveFromCart,
     trackViewItem,
+    trackViewCart,
+    trackBeginCheckout,
+    trackAddShippingInfo,
+    trackAddPaymentInfo,
+    trackGenerateLead,
+    trackSearch,
   };
 };

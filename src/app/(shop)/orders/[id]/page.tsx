@@ -1,7 +1,8 @@
 import { getDefaultCompany, getOrderById } from "@/actions";
-import { OrderStatus, ProductImage, Title } from "@/components";
+import { OrderPurchaseTracker, OrderStatus, ProductImage, Title } from "@/components";
 import { currencyFormat, getNameAttributes } from "@/utils";
 import { getOrderProductTitles, getOrderItemImage } from "@/utils/order-utils";
+import { buildOrderAnalyticsSummary } from "@/lib/analytics/order-analytics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { IoBanOutline, IoWalletOutline, IoCheckmarkCircleOutline, IoTimeOutline, IoCloseCircleOutline } from "react-icons/io5";
@@ -44,8 +45,18 @@ export default async function CategoryPage({ params }: Props) {
 
     const orderItems = orderData.order?.OrderItem || [];
 
+    // Para transferencia bancaria, la orden solo se considera vendida cuando el admin
+    // confirmó manualmente que el pago se acreditó, no en el momento del checkout.
+    const isOfflinePaidOrder =
+        orderData.order?.paymentMethod?.type === "offline" &&
+        (orderData.order?.orderStatus === "paid" ||
+            orderData.order?.orderStatus === "delivered" ||
+            orderData.order?.isPaid);
+    const purchaseAnalytics = isOfflinePaidOrder ? await buildOrderAnalyticsSummary(id) : undefined;
+
     return (
         <div className="flex justify-center items-center mb-72 px-4 sm:px-0">
+            {purchaseAnalytics && <OrderPurchaseTracker orderId={id} analytics={purchaseAnalytics} />}
             <div className="flex flex-col w-[1000px]">
                 <Title title={`Pedido #${id.split("-").at(-1)}`}></Title>
 

@@ -2,21 +2,31 @@
 
 import { useState } from 'react';
 import { IoLogoWhatsapp, IoClose } from 'react-icons/io5';
+import { useAnalytics } from '@/hooks';
 
 interface Props {
   phoneNumber: string;
   message?: string;
   position?: 'bottom-right' | 'bottom-left';
+  productId?: string;
 }
 
 export const WhatsAppFloat = ({ 
   phoneNumber, 
   message = "Hola! Tengo una consulta sobre sus productos", 
-  position = 'bottom-right' 
+  position = 'bottom-right',
+  productId
 }: Props) => {
   const [isVisible, setIsVisible] = useState(true);
+  const { trackGenerateLead } = useAnalytics();
 
   const handleWhatsAppClick = () => {
+    trackGenerateLead({
+      lead_type: 'whatsapp',
+      page_path: window.location.pathname,
+      ...(productId ? { item_id: productId } : {}),
+    });
+
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');

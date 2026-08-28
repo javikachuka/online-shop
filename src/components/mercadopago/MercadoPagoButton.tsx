@@ -4,10 +4,13 @@
 import { useState } from "react";
 import { createSecureCheckout } from "@/actions/checkout/secure-checkout";
 import { useAddressStore } from "@/store";
+import { useAnalytics } from "@/hooks";
+import { cartToGaItems, cartToGaValue } from "@/utils/analytics-mappers";
+import { CartProduct } from "@/interfaces";
 
 interface Props {
     text: string;
-    cart: any[];
+    cart: CartProduct[];
     paymentMethodId: string;
     disabled?: boolean;
 }
@@ -22,6 +25,7 @@ export const MercadoPagoButton = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const address = useAddressStore(state => state.getAddress())
+    const { trackAddPaymentInfo } = useAnalytics();
 
     const handleClick = async () => {
         setLoading(true);
@@ -47,6 +51,12 @@ export const MercadoPagoButton = ({
             
             // Redirigir a MercadoPago
             if (result.mpRedirectUrl) {
+                trackAddPaymentInfo({
+                    currency: 'ARS',
+                    value: cartToGaValue(cart),
+                    payment_type: 'mercado_pago',
+                    items: cartToGaItems(cart),
+                });
                 window.location.href = result.mpRedirectUrl;
             } else {
                 setError("No se pudo generar la URL de pago");

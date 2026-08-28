@@ -2,7 +2,9 @@
 
 import { setUserAddress } from "@/actions";
 import { Address, Company, Country } from "@/interfaces";
-import { useAddressStore } from "@/store";
+import { useAddressStore, useCartStore } from "@/store";
+import { useAnalytics } from "@/hooks";
+import { cartToGaItems } from "@/utils/analytics-mappers";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -52,6 +54,9 @@ export const AddressForm = ({countries, userStoredAddress = {}, company}: Props)
 
     const setAddress = useAddressStore(state => state.setAddress)
     const storeAddress = useAddressStore(state => state.getAddress())
+    const cart = useCartStore(state => state.cart);
+    const { total } = useCartStore(state => state.getSummaryInformation());
+    const { trackAddShippingInfo } = useAnalytics();
 
     const {data: session} = useSession({
         required: true
@@ -81,6 +86,13 @@ export const AddressForm = ({countries, userStoredAddress = {}, company}: Props)
         if(rememberAddress){
            await setUserAddress(restAddress, session!.user.id)
         }
+
+        trackAddShippingInfo({
+            currency: 'ARS',
+            value: total,
+            shipping_tier: deliveryMethod === 'pickup' ? 'retiro_en_tienda' : 'envio_domicilio',
+            items: cartToGaItems(cart),
+        });
 
         router.push('/checkout')
 

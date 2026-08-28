@@ -1,4 +1,4 @@
-import { PaymentMethod } from "@/interfaces"
+import { PaymentMethod, CartProduct } from "@/interfaces"
 import { MercadoPagoButton } from "../mercadopago/MercadoPagoButton";
 
 
@@ -6,7 +6,7 @@ interface Props {
     selectedPayment?: PaymentMethod | null,
     disabled?: boolean,
     onPlaceOrder?: () => void,
-    cart?: any[],
+    cart?: CartProduct[],
 }
 
 export const PaymentButtons = ({selectedPayment, disabled, onPlaceOrder, cart} : Props) => {

@@ -5,8 +5,9 @@ import { cancelCheckoutSession, placeOrder } from "@/actions";
 import { PaymentButtons, ShippingInfo } from "@/components";
 import { PaymentMethod } from "@/interfaces";
 import { useAddressStore, useCartStore } from "@/store";
-import { useOrderSummary } from "@/hooks";
+import { useOrderSummary, useAnalytics } from "@/hooks";
 import { currencyFormat } from "@/utils";
+import { hasTrackedPurchase, markPurchaseTracked } from "@/utils/analytics-dedupe";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ShippingConfig } from "@/lib/shipping-utils";
@@ -27,6 +28,7 @@ export const PlaceOrder = ({paymentsMethods, shippingConfig} : Props) => {
     const address = useAddressStore((state) => state.getAddress());
     const cart = useCartStore((state) => state.cart);
     const clearCart = useCartStore((state) => state.clearCart);
+    const { trackPurchase } = useAnalytics();
 
     const { 
         itemsInCart, 
@@ -104,6 +106,20 @@ export const PlaceOrder = ({paymentsMethods, shippingConfig} : Props) => {
             setIsPlacingOrder(false)
             setErrorMessage(response.message || "Error al realizar el pedido");
             return;
+        }
+
+        // 📊 Pagos offline (ej. transferencia) se confirman de inmediato, sin pasar por Mercado Pago
+        const orderId = response.order?.id;
+        if (response.analytics && orderId && !hasTrackedPurchase(orderId)) {
+            trackPurchase({
+                transaction_id: orderId,
+                value: response.analytics.value,
+                currency: 'ARS',
+                shipping: response.analytics.shipping,
+                tax: response.analytics.tax,
+                items: response.analytics.items,
+            });
+            markPurchaseTracked(orderId);
         }
 
         clearCart();

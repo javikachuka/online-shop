@@ -6,6 +6,8 @@ import { QuantitySelector } from "@/components";
 import { useCartStore } from "@/store";
 import { currencyFormat } from "@/utils";
 import { getProductImageForVariantUrl } from "@/utils/product-image-utils";
+import { cartProductToGaItem, cartToGaValue } from "@/utils/analytics-mappers";
+import { useAnalytics } from "@/hooks";
 import { Toaster, toast } from 'sonner'
 
 interface Props {
@@ -92,6 +94,7 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
     const [addedToCart, setAddedToCart] = useState(false);
     const addProductToCart = useCartStore((state) => state.addProductToCart);
     const isInCart = useCartStore((state) => state.isInCart);
+    const { trackAddToCart } = useAnalytics();
     const [priceToShow, setPriceToShow] = useState<number|null>(
         product.variants && product.variants[0] ? product.variants[0].price : 0
     );
@@ -320,6 +323,11 @@ export const FilterAttributes = ({ product, filters, onVariantChange }: Props) =
         };
 
         addProductToCart(cartProduct);
+        trackAddToCart({
+            currency: 'ARS',
+            value: cartToGaValue([cartProduct]),
+            items: [cartProductToGaItem(cartProduct)],
+        });
         setErrorSelection(false);
         setQuantity(1);
         setTimeout(() => {

@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { sendOrderPaymentConfirmationEmail } from '@/lib/order-email';
 import { applyStockChange } from '@/lib/stock-movements';
 import { StockMovementType } from '@prisma/client';
+import { OrderAnalyticsSummary } from '@/types/analytics';
+import { buildOrderAnalyticsSummary } from '@/lib/analytics/order-analytics';
 
 interface ProcessApprovedPaymentResult {
     ok: boolean;
@@ -13,7 +15,9 @@ interface ProcessApprovedPaymentResult {
     status?: string;
     message?: string;
     clearCart?: boolean; // 🧹 Señal para limpiar carrito
+    analytics?: OrderAnalyticsSummary; // DTO seguro (sin PII) para GA4 `purchase`
 }
+
 
 /**
  * Procesa un pago aprobado en el contexto del nuevo flujo híbrido:
@@ -62,7 +66,8 @@ export const processApprovedPayment = async (paymentId: string): Promise<Process
                 orderId: existingOrderByTransaction.id,
                 status: 'already_processed',
                 message: 'Tu pago ya fue confirmado y tu pedido está listo para ser consultado.',
-                clearCart: true // 🧹 Señal para limpiar carrito
+                clearCart: true, // 🧹 Señal para limpiar carrito
+                analytics: await buildOrderAnalyticsSummary(existingOrderByTransaction.id)
             };
         }
 
@@ -206,6 +211,10 @@ async function handleApprovedPayment(
                 clearCart: true // 🧹 Señal para limpiar carrito
             };
         });
+
+        if (result.ok && result.orderId) {
+            return { ...result, analytics: await buildOrderAnalyticsSummary(result.orderId) };
+        }
 
         return result;
 

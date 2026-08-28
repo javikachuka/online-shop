@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendOrderTransferInstructionsEmail } from "@/lib/order-email";
 import { applyStockChange } from "@/lib/stock-movements";
 import { StockMovementType } from "@prisma/client";
+import { buildOrderAnalyticsSummary } from "@/lib/analytics/order-analytics";
 
 
 interface ProductToOrder {
@@ -262,7 +263,8 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
         return {
             ok: true,
             order: prismaTx.order,
-            prismaTx: prismaTx
+            prismaTx: prismaTx,
+            analytics: await buildOrderAnalyticsSummary(prismaTx.order.id)
         }
     } catch (error: any) {
         console.log(error.message);

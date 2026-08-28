@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   IoSearchOutline, 
@@ -10,6 +10,7 @@ import {
 } from 'react-icons/io5';
 import { SearchResult, SearchFilters } from '@/actions';
 import { ProductGrid, ProductList } from '@/components';
+import { useAnalytics } from '@/hooks';
 
 interface Props {
   initialResult: SearchResult;
@@ -19,6 +20,8 @@ interface Props {
 export const SearchPage = ({ initialResult, initialFilters }: Props) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { trackSearch } = useAnalytics();
+  const lastTrackedSearchTerm = useRef<string | null>(null);
   
   const [result, setResult] = useState(initialResult);
   const [filters, setFilters] = useState(initialFilters);
@@ -30,6 +33,19 @@ export const SearchPage = ({ initialResult, initialFilters }: Props) => {
     setResult(initialResult);
     setFilters(initialFilters);
   }, [initialResult, initialFilters]);
+
+  // Disparar `search` solo cuando el término de búsqueda real cambie
+  useEffect(() => {
+    const searchTerm = result.searchInfo.query?.trim();
+    if (!searchTerm) return;
+    if (lastTrackedSearchTerm.current === searchTerm) return;
+
+    lastTrackedSearchTerm.current = searchTerm;
+    trackSearch({
+      search_term: searchTerm,
+      results_count: result.total,
+    });
+  }, [result, trackSearch]);
 
   // Actualizar URL cuando cambien los filtros
   const updateURL = (newFilters: SearchFilters) => {

@@ -8,6 +8,8 @@ import { getNameAttributes } from "@/utils";
 import { currencyFormat } from '../../../../utils/currencyFormat';
 import { CartProduct } from "@/interfaces";
 import { useRouter } from "next/navigation";
+import { useAnalytics } from "@/hooks";
+import { cartProductToGaItem, cartToGaItems, cartToGaValue } from "@/utils/analytics-mappers";
 import { Toaster, toast } from 'sonner'
 
 export const ProductsInCart = () => {
@@ -18,6 +20,8 @@ export const ProductsInCart = () => {
     const removeProduct = useCartStore((state) => state.removeProduct);
     const [loaded, setLoaded] = useState(false);
     const productsInCart = useCartStore((state) => state.getCart());
+    const { trackAddToCart, trackRemoveFromCart, trackViewCart } = useAnalytics();
+    const hasTrackedViewCart = useRef(false);
     
     type VariantStock = { id: string | number; stock: number; discountPercent: number | null }[];
     const [variantStock, setVariantStock] = useState<VariantStock>([]);
@@ -33,6 +37,18 @@ export const ProductsInCart = () => {
     useEffect(() => {
         setLoaded(true);
     }, []);
+
+    // Disparar `view_cart` una sola vez por visita mientras el carrito no esté vacío
+    useEffect(() => {
+        if (loaded && productsInCart.length > 0 && !hasTrackedViewCart.current) {
+            hasTrackedViewCart.current = true;
+            trackViewCart({
+                currency: 'ARS',
+                value: cartToGaValue(productsInCart),
+                items: cartToGaItems(productsInCart),
+            });
+        }
+    }, [loaded, productsInCart, trackViewCart]);
 
     // Separar el fetch de stock en su propio useEffect
     useEffect(() => {
@@ -92,8 +108,27 @@ export const ProductsInCart = () => {
             toast.error(`No hay suficiente stock para ${product.title} con esta combinación.`);
             return;
         }else {
+            // Semántica estándar GA4: un aumento de cantidad es un `add_to_cart` de la diferencia
+            if (value > product.quantity) {
+                const addedQuantity = value - product.quantity;
+                const addedItem = cartProductToGaItem({ ...product, quantity: addedQuantity });
+                trackAddToCart({
+                    currency: 'ARS',
+                    value: addedItem.price * addedQuantity,
+                    items: [addedItem],
+                });
+            }
             updateProductQuantity(product, value)
         }
+    }
+
+    const handleRemoveProduct = (product: CartProduct) => {
+        removeProduct(product);
+        trackRemoveFromCart({
+            currency: 'ARS',
+            value: cartToGaValue([product]),
+            items: [cartProductToGaItem(product)],
+        });
     }
 
     if (!loaded) {
@@ -146,7 +181,7 @@ export const ProductsInCart = () => {
                             }
                         />
                         <button
-                            onClick={() => removeProduct(product)}
+                            onClick={() => handleRemoveProduct(product)}
                             className="underline mt-3"
                             >
                             Remover

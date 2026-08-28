@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FilterAttributes, ShareProduct, SlideShowSwitcher } from "@/components";
 import { titleFont } from "@/config/fonts";
 import { Product, ProductVariant } from "@/interfaces";
+import { useAnalytics } from "@/hooks";
+import { productVariantToGaItem } from "@/utils/analytics-mappers";
 
 interface Props {
     product: Product;
@@ -12,6 +14,24 @@ interface Props {
 
 export const ProductDetailContent = ({ product, filters }: Props) => {
     const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+    const { trackViewItem } = useAnalytics();
+    const lastTrackedViewItemKey = useRef<string | null>(null);
+
+    useEffect(() => {
+        const variant = selectedVariant ?? product.variants?.[0] ?? null;
+        if (!variant) return;
+
+        const key = `${variant.id}-${variant.price}-${variant.sku ?? ''}`;
+        if (lastTrackedViewItemKey.current === key) return;
+        lastTrackedViewItemKey.current = key;
+
+        const item = productVariantToGaItem(product.title, variant);
+        trackViewItem({
+            currency: 'ARS',
+            value: item.price,
+            items: [item],
+        });
+    }, [selectedVariant, product, trackViewItem]);
 
     return (
         <div className="md:mt-5 mb-20 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto">
