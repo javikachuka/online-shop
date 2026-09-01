@@ -22,7 +22,8 @@ const nextConfig = {
                 '39sm45kg-3000.brs.devtunnels.ms', // Tu tunnel específico
                 '*.devtunnels.ms', // Cualquier devtunnel
                 '*.ngrok.io' // Si usas ngrok
-            ]
+            ],
+            bodySizeLimit: '10mb' // Permite subir imágenes de producto sin exceder el límite por defecto (1MB)
         }
     }
 };
