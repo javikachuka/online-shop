@@ -51,6 +51,7 @@ export interface ProductVariant {
     stock: number;
     sku?: string|null;
     discountPercent?: number; 
+    isEnabled?: boolean;
     attributes: ProductVariantAttribute[];
     order: number;
 }

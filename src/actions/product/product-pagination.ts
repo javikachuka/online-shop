@@ -40,6 +40,7 @@ export const getPaginatedProductsWithImages = async ({page = 1, take = 12}: Pagi
                     }
                 },
                 variants: {
+                    where: { isEnabled: true },
                     include: {
                         attributes: {
                             select: {

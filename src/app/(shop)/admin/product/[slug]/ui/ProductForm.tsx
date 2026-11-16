@@ -116,8 +116,11 @@ export const ProductForm = ({
             attributes: Array<{ id?: string; attributeId: string; value: string; valueId: string }>;
             discountPercent: string;
             order: number;
+            isEnabled: boolean;
+            pendingRemoval?: boolean;
         }>
     >([]);
+    const [variantToRemove, setVariantToRemove] = useState<{ id: string; label: string } | null>(null);
     
 
     const [slug, setSlug] = useState<string>(product?.slug || "");
@@ -177,6 +180,7 @@ export const ProductForm = ({
                     sku: variant.sku || "",
                     discountPercent: variant.discountPercent?.toString() || "",
                     order: variant.order || 0,
+                    isEnabled: variant.isEnabled ?? true,
                     attributes: (variant.attributes || []).map(attr => ({
                         id: attr.id ?? '', // Use attr.id if available, fallback to empty string
                         attributeId: attr.attributeId,
@@ -421,6 +425,7 @@ export const ProductForm = ({
         attributes: [] as Array<{ id: string; attributeId: string; value: string }>, // ← FIX: Inicializar vacío
         discountPercent: "",
         order: 0,
+        isEnabled: true,
     });
 
     // Actualizar valor de atributo en nueva variante
@@ -480,6 +485,7 @@ export const ProductForm = ({
                 })),
             discountPercent: "",
             order: 0,
+            isEnabled: true,
         });
         setVariantModalOpen(true);
     };
@@ -494,6 +500,7 @@ export const ProductForm = ({
             sku: v.sku,
             discountPercent: v.discountPercent,
             order: v.order || 0,
+            isEnabled: v.isEnabled ?? true,
             attributes: attributes.map(attr => {
                 const found = v.attributes.find(a => a.attributeId === attr.id);
                 return {
@@ -521,6 +528,7 @@ export const ProductForm = ({
                 })),
             discountPercent: "",
             order: 0,
+            isEnabled: true,
         });
     };
 
@@ -548,6 +556,7 @@ export const ProductForm = ({
             sku: newVariant.sku,
             discountPercent: newVariant.discountPercent,
             order: newVariant.order,
+            isEnabled: editVariantIndex !== null ? (variants[editVariantIndex].isEnabled ?? true) : (newVariant.isEnabled ?? true),
             attributes: newVariant.attributes
                 .filter(attr => selectedAttributeIds.includes(attr.attributeId))
                 .map(attr => ({
@@ -566,9 +575,58 @@ export const ProductForm = ({
         closeVariantModal();
     };
 
-    // Eliminar variante
+    const isPersistedVariantId = (id: string) => Boolean(id) && id.length >= 20;
+
+    const getVariantLabel = (variant: { sku?: string; attributes: Array<{ attributeId: string; value: string }> }) => {
+        if (variant.sku?.trim()) return variant.sku;
+        const attrs = (variant.attributes || [])
+            .map((attr) => {
+                const attrObj = attributes.find((a) => a.id === attr.attributeId);
+                return attrObj ? `${attrObj.name}: ${attr.value}` : attr.value;
+            })
+            .filter(Boolean)
+            .join(", ");
+        return attrs || "esta variante";
+    };
+
+    // Solicitar eliminación de variante (confirmación)
     const handleRemoveVariant = (id: string) => {
-        setVariants((prev) => prev.filter((v) => v.id !== id));
+        const variant = variants.find((v) => v.id === id);
+        if (!variant) return;
+        setVariantToRemove({ id, label: getVariantLabel(variant) });
+    };
+
+    const confirmRemoveVariant = () => {
+        if (!variantToRemove) return;
+        const variant = variants.find((v) => v.id === variantToRemove.id);
+        if (!variant) {
+            setVariantToRemove(null);
+            return;
+        }
+
+        if (!isPersistedVariantId(variant.id)) {
+            // Variante nueva (aún no guardada): se quita del formulario.
+            setVariants((prev) => prev.filter((v) => v.id !== variant.id));
+        } else {
+            // Variante persistida: se marca como pendiente para que el usuario vea el cambio
+            // y deba guardar para aplicarlo. Al guardar se omite del payload y el backend
+            // la eliminará si no tiene relaciones, o la desactivará si tiene historial.
+            setVariants((prev) =>
+                prev.map((v) => v.id === variant.id ? { ...v, pendingRemoval: true } : v)
+            );
+        }
+
+        setVariantToRemove(null);
+    };
+
+    const handleUndoRemoveVariant = (id: string) => {
+        setVariants((prev) =>
+            prev.map((v) => v.id === id ? { ...v, pendingRemoval: false } : v)
+        );
+    };
+
+    const handleReactivateVariant = (id: string) => {
+        setVariants((prev) => prev.map((v) => v.id === id ? { ...v, isEnabled: true } : v));
     };
 
     const handleCategoryChange = (id: string, checked: boolean) => {
@@ -603,14 +661,16 @@ export const ProductForm = ({
             errors.basePrice = "Debes definir un precio base para las variantes.";
             valid = false;
         }
-        if (!variants.length) {
+        const effectiveVariants = variants.filter((v) => !v.pendingRemoval);
+        const hasPendingRemovals = variants.some((v) => v.pendingRemoval);
+        if (!effectiveVariants.length && !hasPendingRemovals) {
             errors.variants = "Al menos una variante es requerida.";
             valid = false;
         }
         // Validate attributes consistency across variants
-        if (variants.length > 1) {
-            const firstAttrs = variants[0].attributes.map(a => a.attributeId).sort();
-            for (let v of variants) {
+        if (effectiveVariants.length > 1) {
+            const firstAttrs = effectiveVariants[0].attributes.map(a => a.attributeId).sort();
+            for (let v of effectiveVariants) {
                 const attrs = v.attributes.map(a => a.attributeId).sort();
                 if (JSON.stringify(attrs) !== JSON.stringify(firstAttrs)) {
                     errors.variants = "All variants must have the same attribute types.";
@@ -631,15 +691,20 @@ export const ProductForm = ({
             return;
         }
         // Limpiar ids autogenerados de variantes nuevas antes de enviar al backend
-        const cleanVariants = variants.map(variant => {
-            // Si el id no es un UUID (por ejemplo, menos de 20 caracteres), lo eliminamos
-            
-            if (!variant.id || variant.id.length < 20) {
-                const { id, ...rest } = variant;
-                return rest;
-            }
-            return variant;
-        });
+        // Las variantes marcadas como pendientes de eliminación se omiten del payload:
+        // al guardar, el backend las eliminará si no tienen relaciones o las desactivará si las tienen.
+        const cleanVariants = variants
+            .filter((variant) => !variant.pendingRemoval)
+            .map((variant) => {
+                const { pendingRemoval, ...variantData } = variant as typeof variant & { pendingRemoval?: boolean };
+
+                // Si el id no es un UUID (por ejemplo, menos de 20 caracteres), lo eliminamos
+                if (!variantData.id || variantData.id.length < 20) {
+                    const { id, ...rest } = variantData;
+                    return rest;
+                }
+                return variantData;
+            });
 
         // Construir FormData
         const formData = new FormData();
@@ -680,9 +745,14 @@ export const ProductForm = ({
             toast.success("Producto actualizado con éxito")
             if(updatedProduct?.slug && updatedProduct?.slug !== product.slug){
                 router.push(`/admin/product/${updatedProduct?.slug}`)
+            } else {
+                router.refresh()
             }
         }else{
             toast.success("Producto creado con éxito")
+            if (updatedProduct?.slug) {
+                router.push(`/admin/product/${updatedProduct.slug}`)
+            }
         }
         // Opcional: redirigir o limpiar formulario
 
@@ -709,6 +779,7 @@ export const ProductForm = ({
             stock: "1",
             // Aquí 'c' ya sabe que tiene .value gracias al tipado de combinations
             sku: `${getValues("slug").toUpperCase()}-${combo.map((c: ComboAttribute) => c.value.substring(0,3).toUpperCase()).join("-")}`,
+            isEnabled: true,
             attributes: combo.map((c: ComboAttribute) => ({
                 attributeId: c.attributeId,
                 value: c.value,
@@ -1007,6 +1078,12 @@ export const ProductForm = ({
 
                     {/* Tu Tabla de Variantes Actualizada */}
                     <div className="overflow-x-auto">
+                        {variants.some((v) => v.pendingRemoval) && (
+                            <div className="mb-3 p-3 rounded-md border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+                                Hay variantes marcadas como pendientes de eliminar. Los cambios se aplicarán cuando guardes el producto.
+                                Si la variante tiene relaciones o historial se desactivará; si no tiene relaciones se eliminará por completo.
+                            </div>
+                        )}
                         {/* Tabla de variantes */}
                         <table className="w-full text-sm border mb-2">
                             <thead>
@@ -1016,12 +1093,25 @@ export const ProductForm = ({
                                     <th className="p-2">SKU</th>
                                     <th className="p-2">Atributos</th>
                                     <th className="p-2">Descuento (%)</th>
+                                    <th className="p-2">Estado</th>
                                     <th className="p-2">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {variants.map((variant, idx) => (
-                                    <tr key={variant.id} className="border-b">
+                                {variants.map((variant, idx) => {
+                                    const variantEnabled = variant.isEnabled ?? true;
+                                    const isPendingRemoval = Boolean(variant.pendingRemoval);
+                                    return (
+                                    <tr
+                                        key={variant.id}
+                                        className={`border-b ${
+                                            isPendingRemoval
+                                                ? 'bg-amber-50 opacity-80'
+                                                : variantEnabled
+                                                    ? ''
+                                                    : 'bg-gray-50 opacity-70'
+                                        }`}
+                                    >
                                         <td className="p-2">{variant.price}</td>
                                         <td className="p-2">{variant.stock}</td>
                                         <td className="p-2">{variant.sku}</td>
@@ -1046,24 +1136,61 @@ export const ProductForm = ({
                                             {variant.discountPercent}
                                         </td>
                                         <td className="p-2">
-                                            <button
-                                                type="button"
-                                                className={`text-blue-600 underline mr-2 ${selectedAttributeIds.length === 0 ? 'disabled:cursor-not-allowed': ''}`}
-                                                onClick={() => openEditVariantModal(idx)}
-                                                disabled={selectedAttributeIds.length === 0}
-                                            >
-                                                Editar
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="text-red-600 underline"
-                                                onClick={() => handleRemoveVariant(variant.id)}
-                                            >
-                                                Eliminar
-                                            </button>
+                                            {isPendingRemoval ? (
+                                                <div>
+                                                    <span className="text-amber-800 font-medium">Pendiente de eliminar</span>
+                                                    <div className="text-xs text-amber-700">Guardar para aplicar</div>
+                                                </div>
+                                            ) : variantEnabled ? (
+                                                <span className="text-green-700 font-medium">Activa</span>
+                                            ) : (
+                                                <span className="text-gray-600 font-medium">Desactivada</span>
+                                            )}
+                                        </td>
+                                        <td className="p-2">
+                                            <div className="flex flex-wrap gap-2">
+                                                {isPendingRemoval ? (
+                                                    <button
+                                                        type="button"
+                                                        className="text-blue-600 underline"
+                                                        onClick={() => handleUndoRemoveVariant(variant.id)}
+                                                    >
+                                                        Deshacer
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            className={`text-blue-600 underline ${selectedAttributeIds.length === 0 ? 'disabled:cursor-not-allowed': ''}`}
+                                                            onClick={() => openEditVariantModal(idx)}
+                                                            disabled={selectedAttributeIds.length === 0}
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                        {variantEnabled ? (
+                                                            <button
+                                                                type="button"
+                                                                className="text-red-600 underline"
+                                                                onClick={() => handleRemoveVariant(variant.id)}
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="text-green-700 underline"
+                                                                onClick={() => handleReactivateVariant(variant.id)}
+                                                            >
+                                                                Reactivar
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                         {formErrors.variants && <span className="text-red-500 text-xs">{formErrors.variants}</span>}
@@ -1335,6 +1462,34 @@ export const ProductForm = ({
                 <div className="flex gap-2 justify-end mt-4">
                     <button type="button" className="btn-secondary" onClick={closeVariantModal}>Cancelar</button>
                     <button type="button" className="btn-primary" onClick={handleSaveVariant}>Guardar</button>
+                </div>
+            </Modal>
+
+            <Modal
+                open={!!variantToRemove}
+                onClose={() => setVariantToRemove(null)}
+                title="Eliminar variante"
+            >
+                <p className="text-sm text-gray-700 mb-4">
+                    ¿Deseas eliminar la variante <span className="font-semibold">{variantToRemove?.label}</span>?
+                    Si la variante tiene relaciones o historial (órdenes, movimientos o reservas de stock), se desactivará
+                    para que no esté disponible para los clientes. Si no tiene relaciones, se eliminará por completo al guardar.
+                </p>
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setVariantToRemove(null)}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-primary bg-red-600 hover:bg-red-700"
+                        onClick={confirmRemoveVariant}
+                    >
+                        Confirmar
+                    </button>
                 </div>
             </Modal>
         </form>

@@ -30,6 +30,7 @@ export const getProductsByCategoryId = async ({ id, page = 1, pageSize = 12 }: G
       include: {
         ProductImage: true,
         variants: {
+          where: { isEnabled: true },
           include: {
             attributes: {
               select: {

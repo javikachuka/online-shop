@@ -112,7 +112,7 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
                 const productQuantity = productIds.filter(p => p.variantId === product.id)
                     .reduce((total, p) => total + p.quantity, 0);
                 if(productQuantity === 0) {
-                    throw new Error(`Producto ${product.id} no tiene cantidad a actualizar`);
+                    throw new Error(`No se pudo procesar la cantidad solicitada para "${product.product.title}".`);
                 }
 
                 // Validar stock disponible considerando reservas activas (ej: alguien en checkout MP)
@@ -129,8 +129,8 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
 
                 if (availableStock < productQuantity) {
                     throw new Error(
-                        `Stock insuficiente para ${product.sku}. ` +
-                        `Disponible: ${availableStock}, Solicitado: ${productQuantity}`
+                        `Stock insuficiente para ${product.product.title}. ` +
+                        `Disponible: ${Math.max(0, availableStock)}, Solicitado: ${productQuantity}`
                     );
                 }
 
@@ -149,7 +149,9 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
             // Verificación de seguridad post-decremento (guarda ante race conditions)
             updatedProducts.forEach(product => {
                 if(product.stock < 0){
-                    throw new Error(`Producto ${product.sku} no tiene suficiente stock`)
+                    const productInfo = products.find(p => p.id === product.id);
+                    const productTitle = productInfo?.product.title ?? 'el producto seleccionado';
+                    throw new Error(`Stock insuficiente para ${productTitle}. Por favor, revisa tu carrito e inténtalo nuevamente.`)
                 }
             });
     
@@ -267,15 +269,23 @@ export async function placeOrder(productIds: ProductToOrder[], address: Address,
             analytics: await buildOrderAnalyticsSummary(prismaTx.order.id)
         }
     } catch (error: any) {
-        console.log(error.message);
-        
-        // Errores de stock o cantidad insuficiente
-        if (error.message && (error.message.includes('Producto'))) {
+        console.log(error?.message);
+
+        const message = typeof error?.message === 'string' ? error.message : '';
+
+        // Errores conocidos y seguros para mostrar al usuario
+        if (
+            message.startsWith('Stock insuficiente para') ||
+            message.includes('No se pudo procesar la cantidad solicitada') ||
+            message.includes('No se encontró una empresa configurada') ||
+            message.includes('Producto')
+        ) {
             return {
                 ok: false,
-                message: error.message
+                message
             }
         }
+
         // Errores de base de datos u otros
         return {
             ok: false,

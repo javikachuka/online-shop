@@ -118,18 +118,33 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                     .map((v: any) => v.id)
                     .filter((variantId: string | undefined) => !!variantId);
 
-                const variantsToDelete = existingVariantIds.filter(
+                const variantsToRemove = existingVariantIds.filter(
                     (variantId) => !incomingVariantIds.includes(variantId)
                 );
 
-                if (variantsToDelete.length > 0) {
-                    await tx.productVariantAttribute.deleteMany({
-                        where: { variantId: { in: variantsToDelete } }
-                    });
+                for (const variantId of variantsToRemove) {
+                    const [orderItemsCount, stockMovementsCount, stockReservationsCount] = await Promise.all([
+                        tx.orderItem.count({ where: { variantId } }),
+                        tx.stockMovement.count({ where: { variantId } }),
+                        tx.stockReservation.count({ where: { variantId } }),
+                    ]);
 
-                    await tx.productVariant.deleteMany({
-                        where: { id: { in: variantsToDelete } }
-                    });
+                    const hasRelations =
+                        orderItemsCount > 0 || stockMovementsCount > 0 || stockReservationsCount > 0;
+
+                    if (hasRelations) {
+                        await tx.productVariant.update({
+                            where: { id: variantId },
+                            data: { isEnabled: false },
+                        });
+                    } else {
+                        await tx.productVariantAttribute.deleteMany({
+                            where: { variantId }
+                        });
+                        await tx.productVariant.delete({
+                            where: { id: variantId }
+                        });
+                    }
                 }
 
                 for (const variant of variants) {
@@ -138,6 +153,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                         sku: variant.sku || null,
                         discountPercent: Number(variant.discountPercent || 0),
                         order: Number(variant.order || 0),
+                        isEnabled: variant.isEnabled !== false,
                     };
 
                     if (variant.id && existingVariantIds.includes(variant.id)) {
@@ -242,6 +258,7 @@ export const saveOrUpdateProduct = async (formData: FormData) => {
                             sku: variant.sku || null,
                             discountPercent: Number(variant.discountPercent || 0),
                             order: Number(variant.order || 0),
+                            isEnabled: variant.isEnabled !== false,
                             productId: currentProduct.id,
                             attributes: {
                                 create: (variant.attributes || []).map((attr: any) => ({

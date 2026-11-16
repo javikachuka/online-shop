@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { getPaginatedProducts } from "@/actions/product/get-paginated-products";
 import { Pagination, ProductImage, SearchForm, Title } from "@/components";
+import { DeleteProductButton } from "./ui/DeleteProductButton";
 
 import Link from "next/link";
 
@@ -93,7 +94,7 @@ export default async function OrdersPage({ searchParams }: Props) {
                             {products?.length === 0 && (
                                 <tr className="bg-white border-b transition duration-300 ease-in-out hover:bg-gray-100">
                                     <td
-                                        colSpan={4}
+                                        colSpan={6}
                                         className="px-6 py-4 text-sm font-medium text-gray-900 text-center"
                                     >
                                         No hay productos disponibles
@@ -103,7 +104,7 @@ export default async function OrdersPage({ searchParams }: Props) {
                             {products?.map((product) => (
                                 <tr
                                     key={product.id}
-                                    className="bg-white border-b transition duration-300 ease-in-out hover:bg-gray-100"
+                                    className={`border-b transition duration-300 ease-in-out hover:bg-gray-100 ${product.isEnabled ? 'bg-white' : 'bg-gray-50 opacity-75'}`}
                                 > 
                                     <td className="px-6 py-4 whitespace-nowrap">
 
@@ -155,12 +156,22 @@ export default async function OrdersPage({ searchParams }: Props) {
                                         }
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <Link
-                                            href={`/admin/product/${product.slug}`}
-                                            className="text-blue-600 hover:underline"
-                                        >
-                                            Editar
-                                        </Link>
+                                        <div className="flex items-center gap-4">
+                                            <Link
+                                                href={`/admin/product/${product.slug}`}
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                Editar
+                                            </Link>
+                                            {product.isEnabled ? (
+                                                <DeleteProductButton
+                                                    productId={product.id}
+                                                    productTitle={product.title}
+                                                />
+                                            ) : (
+                                                <span className="text-sm text-gray-400">Eliminado</span>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

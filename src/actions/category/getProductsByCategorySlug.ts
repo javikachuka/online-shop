@@ -35,6 +35,7 @@ export const getProductsByCategorySlug = async ({ slug, page = 1, pageSize = 12 
       include: {
         ProductImage: true,
         variants: {
+            where: { isEnabled: true },
             include: {
                 attributes: {
                 select: {

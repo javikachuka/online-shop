@@ -3,7 +3,14 @@
 import {prisma} from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-retry";
 
-export const getProductBySlug = async (slug: string) => {
+interface GetProductBySlugOptions {
+    includeDisabledVariants?: boolean;
+}
+
+export const getProductBySlug = async (
+    slug: string,
+    options?: GetProductBySlugOptions
+) => {
 
     try {
 
@@ -45,6 +52,7 @@ export const getProductBySlug = async (slug: string) => {
                     }
                 },
                 variants: {
+                    where: options?.includeDisabledVariants ? {} : { isEnabled: true },
                     include: {
                         attributes: {
                             select: {

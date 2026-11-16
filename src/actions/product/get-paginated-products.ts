@@ -68,6 +68,7 @@ export const getPaginatedProducts = async (
                 }
             },
             orderBy: [
+                { isEnabled: 'desc' },
                 { createdAt: 'desc' },
                 { title: 'asc' }
             ]

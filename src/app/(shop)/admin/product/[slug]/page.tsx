@@ -17,7 +17,7 @@ export default async function ProductPage({ params }: Props) {
     const { slug } = await params;
 
     const [product, {categories}, {attributes}] = await Promise.all([
-        getProductBySlug(slug),
+        getProductBySlug(slug, { includeDisabledVariants: true }),
         getAllEnabledCategories(),
         getAllAtributes()
     ]);
