@@ -1,0 +1,51 @@
+name: Build y publicar imagen (develop)
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  develop:
+    runs-on: ubuntu-latest
+    environment: develop-ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build y push de la imagen :dev
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/online-shop:dev
+          build-args: |
+            NEXT_PUBLIC_BASE_URL=${{ vars.NEXT_PUBLIC_BASE_URL }}
+            NEXT_PUBLIC_PAYPAL_CLIENT_ID=${{ vars.NEXT_PUBLIC_PAYPAL_CLIENT_ID }}
+            NEXT_PUBLIC_WHATSAPP_NUMBER=${{ vars.NEXT_PUBLIC_WHATSAPP_NUMBER }}
+            NEXT_PUBLIC_WHATSAPP_MESSAGE=${{ vars.NEXT_PUBLIC_WHATSAPP_MESSAGE }}
+            NEXT_PUBLIC_GA4_MEASUREMENT_ID=${{ vars.NEXT_PUBLIC_GA4_MEASUREMENT_ID }}
+
+      # Por ahora el deploy se hace a mano: Dokploy → app develop → Deploy.
+      # Cuando tengas funcionando el dominio del panel, descomenta este paso
+      # y carga los secrets DOKPLOY_HOST, DOKPLOY_API_KEY y DOKPLOY_APP_ID_DEV:
+      #
+      # - name: Disparar deploy en Dokploy
+      #   run: |
+      #     curl -f -X POST "https://${{ secrets.DOKPLOY_HOST }}/api/application.deploy" \
+      #       -H "accept: application/json" \
+      #       -H "Content-Type: application/json" \
+      #       -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+      #       -d '{"applicationId":"${{ secrets.DOKPLOY_APP_ID_DEV }}"}'
