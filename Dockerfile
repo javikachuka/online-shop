@@ -31,8 +31,10 @@ ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
 # necesitaría una DB durante el build. Las migraciones se aplican al arrancar.
 # Prisma valida las env vars del schema durante `generate`, pero no conecta:
 # alcanza con una URL válida y descartable. La real la inyecta Dokploy en runtime.
-RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate \
-    && npx next build
+# Debe estar como ENV (no prefijando el RUN) para que también la vea `next build`.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    AUTH_SECRET="build-only-secret"
+RUN npx prisma generate && npx next build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
