@@ -29,12 +29,24 @@ ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
 
 # No ejecutamos `npm run build`: ese script corre `prisma migrate deploy` y
 # necesitaría una DB durante el build. Las migraciones se aplican al arrancar.
-# Prisma valida las env vars del schema durante `generate`, pero no conecta:
-# alcanza con una URL válida y descartable. La real la inyecta Dokploy en runtime.
-# Debe estar como ENV (no prefijando el RUN) para que también la vea `next build`.
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build" \
-    AUTH_SECRET="build-only-secret"
-RUN npx prisma generate && npx next build
+# Varias librerias validan sus variables al importarse (Prisma, Resend,
+# MercadoPago, etc.). Durante el build usamos valores descartables: los reales
+# los inyecta Dokploy en runtime. Se exportan dentro del RUN para que los vean
+# tanto `prisma generate` como `next build` sin guardarlos como ENV de imagen.
+RUN export DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+       AUTH_SECRET="build-only-secret" \
+       RESEND_API_KEY="re_build_only" \
+       FROM_EMAIL="build@example.com" \
+       COMPANY_NAME="Build" \
+       SUPPORT_EMAIL="build@example.com" \
+       MERCADO_PAGO_ACCESS_TOKEN="build-only" \
+       MERCADOPAGO_WEBHOOK_SECRET="build-only" \
+       PAYPAL_SECRET="build-only" \
+       PAYPAL_AUTH_URL="https://example.com" \
+       CLOUDINARY_URL="cloudinary://build:build@build" \
+       CRON_SECRET="build-only" \
+    && npx prisma generate \
+    && npx next build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
